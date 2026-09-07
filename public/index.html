@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Ghost Demo</title>
+  <style>
+    :root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#f5f7fb;background:#0a0c10}
+    *{box-sizing:border-box} body{margin:0;min-height:100vh;background:radial-gradient(circle at top,#1a2230 0,#0a0c10 42%,#060709 100%)}
+    .wrap{max-width:760px;margin:0 auto;padding:24px}.brand{font-size:34px;font-weight:800;letter-spacing:-1px}.sub{color:#9aa4b2;margin:4px 0 20px}
+    .card{background:rgba(19,24,32,.92);border:1px solid #273140;border-radius:18px;padding:16px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+    input,button{font:inherit}.row{display:flex;gap:10px;align-items:center}.grow{flex:1}
+    input{width:100%;background:#0d1117;color:#fff;border:1px solid #303b4c;border-radius:12px;padding:13px 14px;outline:none}
+    input:focus{border-color:#6d7cff}.btn{border:none;border-radius:12px;padding:12px 16px;background:#6d7cff;color:white;font-weight:700;cursor:pointer}.btn.secondary{background:#202836}.btn:disabled{opacity:.45;cursor:not-allowed}
+    .status{font-size:13px;margin-top:9px;color:#8f9bad}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#68707b;margin-right:6px}.dot.on{background:#58d68d}
+    .chat{margin-top:18px;display:none}.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.peer{font-weight:700}.messages{height:430px;overflow:auto;padding:12px;background:#080b0f;border-radius:14px;border:1px solid #1f2732}
+    .msg{max-width:78%;padding:10px 12px;border-radius:14px;margin:8px 0;position:relative;word-break:break-word}.me{margin-left:auto;background:#5063ff}.them{background:#1d2632}.meta{font-size:11px;opacity:.7;margin-top:6px}.timer{font-variant-numeric:tabular-nums}.gone{opacity:.35;filter:blur(3px);transition:.3s}
+    .composer{display:flex;gap:10px;margin-top:10px}.note{font-size:12px;color:#f0c674;margin-top:14px;line-height:1.4}.tiny{font-size:12px;color:#7e8997}
+    @media (max-width:600px){.wrap{padding:14px}.messages{height:58vh}.brand{font-size:29px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand">Ghost</div>
+    <div class="sub">No inbox. No history. Only now.</div>
+
+    <div class="card">
+      <div class="row">
+        <input id="myId" class="grow" placeholder="Deine Ghost-ID, z. B. hendrik" />
+        <button id="register" class="btn">Online gehen</button>
+      </div>
+      <div id="meStatus" class="status"><span class="dot"></span>Noch offline</div>
+
+      <div style="height:16px"></div>
+      <div class="row">
+        <input id="peerId" class="grow" placeholder="Ghost-ID deines Kontakts" />
+        <button id="check" class="btn secondary">Prüfen</button>
+      </div>
+      <div id="peerStatus" class="status"><span class="dot"></span>Kontakt nicht geprüft</div>
+
+      <div id="chat" class="chat">
+        <div class="topbar"><div>Chat mit <span id="peerLabel" class="peer"></span></div><div class="tiny">60s nach Lesen</div></div>
+        <div id="messages" class="messages"></div>
+        <div class="composer">
+          <input id="text" class="grow" placeholder="Nur live zustellbar …" maxlength="2000" />
+          <button id="send" class="btn">Senden</button>
+        </div>
+      </div>
+
+      <div class="note">Demo: Nachrichten werden nur weitergeleitet, wenn der Empfänger online ist. Noch keine echte Ende-zu-Ende-Verschlüsselung und nicht für vertrauliche Inhalte verwenden.</div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io({ reconnection: true, reconnectionAttempts: Infinity, reconnectionDelay: 500, timeout: 10000 });
+    const $ = (id) => document.getElementById(id);
+    let me = '', peer = '', registered = false;
+    const timers = new Map();
+
+    function setPresence(el, text, online){ el.innerHTML = `<span class="dot ${online?'on':''}"></span>${text}`; }
+    function escapeHtml(s){ return String(s).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c])); }
+    function safeSelector(id){ return String(id).replace(/[^a-zA-Z0-9_-]/g, '_'); }
+
+    function registerNow(){
+      if(!me || !socket.connected) return;
+      setPresence($('meStatus'), 'Verbinde …', false);
+      socket.timeout(5000).emit('register', {id: me}, (err, res) => {
+        if(err || !res?.ok){ registered = false; setPresence($('meStatus'), 'Verbindung fehlgeschlagen – erneut versuchen', false); $('register').disabled = false; return; }
+        registered = true;
+        $('myId').disabled = true; $('register').disabled = true;
+        setPresence($('meStatus'), `Online als ${escapeHtml(me)}`, true);
+        if(peer) checkPeer();
+      });
+    }
+
+    socket.on('connect', () => { if(me) registerNow(); });
+    socket.on('disconnect', () => {
+      registered = false;
+      setPresence($('meStatus'), me ? 'Verbindung unterbrochen – verbinde neu …' : 'Noch offline', false);
+      $('send').disabled = true;
+    });
+
+    $('register').onclick = () => {
+      me = $('myId').value.trim();
+      if(!me) return;
+      if(!socket.connected){ setPresence($('meStatus'), 'Server wird verbunden …', false); return; }
+      registerNow();
+    };
+
+    function checkPeer(){
+      peer = $('peerId').value.trim();
+      if(!peer) return;
+      if(!socket.connected || !registered){
+        setPresence($('peerStatus'), 'Erst selbst online gehen', false);
+        $('chat').style.display = 'none';
+        return;
+      }
+      $('check').disabled = true;
+      setPresence($('peerStatus'), 'Prüfe …', false);
+      socket.timeout(5000).emit('presence:check', {id: peer}, (err, res) => {
+        $('check').disabled = false;
+        if(err || !res){ setPresence($('peerStatus'), 'Prüfung fehlgeschlagen – nochmal tippen', false); return; }
+        const online = !!res.online;
+        setPresence($('peerStatus'), online ? `${escapeHtml(peer)} ist online` : `${escapeHtml(peer)} ist offline`, online);
+        $('peerLabel').textContent = peer;
+        $('chat').style.display = online ? 'block' : 'none';
+        $('send').disabled = !online || !registered;
+      });
+    }
+    $('check').onclick = checkPeer;
+
+    socket.on('presence:update', ({id, online}) => {
+      if(peer && id === peer){
+        setPresence($('peerStatus'), online ? `${escapeHtml(peer)} ist online` : `${escapeHtml(peer)} ist offline`, online);
+        if(!online) $('chat').style.display = 'none';
+        else $('chat').style.display = 'block';
+        $('send').disabled = !online || !registered;
+      }
+    });
+
+    function addMessage({clientId, from, text}, mine){
+      const div = document.createElement('div');
+      div.className = `msg ${mine?'me':'them'}`;
+      div.dataset.id = safeSelector(clientId);
+      div.innerHTML = `<div>${escapeHtml(text)}</div><div class="meta"><span>${mine?'gesendet':'gelesen'}</span> · <span class="timer">${mine?'wartet':'60s'}</span></div>`;
+      $('messages').appendChild(div); $('messages').scrollTop = $('messages').scrollHeight;
+      if(!mine){ const readAt = Date.now(); socket.emit('message:read', {to: from, clientId, readAt}); startTimer(clientId, readAt); }
+    }
+
+    function startTimer(clientId, readAt){
+      const el = document.querySelector(`[data-id="${safeSelector(clientId)}"]`);
+      if(!el) return;
+      const timerEl = el.querySelector('.timer');
+      clearInterval(timers.get(clientId));
+      const tick = () => {
+        const left = Math.max(0, 60 - Math.floor((Date.now()-readAt)/1000));
+        timerEl.textContent = `${left}s`;
+        if(left <= 0){ clearInterval(timers.get(clientId)); timers.delete(clientId); el.classList.add('gone'); setTimeout(() => el.remove(), 350); }
+      };
+      tick(); timers.set(clientId, setInterval(tick, 250));
+    }
+
+    $('send').onclick = send;
+    $('text').addEventListener('keydown', e => { if(e.key==='Enter') send(); });
+    function makeId(){ return (crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`; }
+    function send(){
+      const text = $('text').value.trim(); if(!text || !peer || !registered) return;
+      socket.emit('message:send', {to: peer, text, clientId: makeId()}); $('text').value='';
+    }
+
+    socket.on('message:sent', msg => addMessage(msg, true));
+    socket.on('message:incoming', msg => {
+      if(!peer){ peer = msg.from; $('peerId').value=peer; $('peerLabel').textContent=peer; $('chat').style.display='block'; }
+      if(msg.from === peer) addMessage(msg, false);
+    });
+    socket.on('message:read', ({clientId, readAt}) => startTimer(clientId, readAt));
+    socket.on('message:error', () => { setPresence($('peerStatus'), `${escapeHtml(peer)} ist offline`, false); $('chat').style.display='none'; });
+  </script>
+</body>
+</html>
