@@ -196,3 +196,153 @@ h1{font-size:19px}.panel-title-row p{color:var(--muted);font-size:13px;letter-sp
 @media (max-width:430px){
   .character-scene{height:345px;margin-left:-12px;margin-right:-12px}
 }
+
+
+/* =========================================================
+   v0.6 — exact reference artwork + real chat screen
+   ========================================================= */
+.profile-screen,.chat-screen{display:none}
+.profile-screen.screen-active,.chat-screen.screen-active{display:block}
+body[data-screen="chat"]{overflow:hidden}
+body[data-screen="chat"] .ambient{display:none}
+
+/* Exact artwork scene */
+.character-scene{
+  height:355px;
+  background:#02070b;
+}
+.hero-yokai{inset:0}
+.artwork-scene{
+  position:absolute;
+  inset:0;
+  overflow:hidden;
+  background:#02070b;
+  isolation:isolate;
+}
+.artwork-background{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:center;
+  transform:scale(1.03);
+  filter:saturate(1.02) contrast(1.03);
+}
+.artwork-character{
+  position:absolute;
+  left:50%;
+  top:54%;
+  width:55%;
+  transform:translate(-50%,-50%);
+  transform-origin:50% 78%;
+  z-index:3;
+  animation:artFloat 4.4s ease-in-out infinite;
+  filter:drop-shadow(0 0 10px rgba(96,205,255,.26));
+}
+.artwork-character-image{
+  width:100%;
+  height:auto;
+  display:block;
+  user-select:none;
+  -webkit-user-drag:none;
+}
+.artwork-scene.no-motion .artwork-character{animation:none}
+@keyframes artFloat{
+  0%,100%{transform:translate(-50%,-50%) translateY(0) rotate(0)}
+  50%{transform:translate(-50%,-50%) translateY(-5px) rotate(.35deg)}
+}
+.artwork-fx{position:absolute;inset:0;z-index:4;pointer-events:none}
+.artwork-fx i{
+  position:absolute;width:4px;height:4px;border-radius:50%;background:#bdf3ff;
+  box-shadow:0 0 10px #6bd8ff;opacity:.55;animation:artSpark 3s ease-in-out infinite
+}
+.artwork-fx i:nth-child(1){left:22%;top:39%}
+.artwork-fx i:nth-child(2){left:79%;top:30%;animation-delay:.9s}
+.artwork-fx i:nth-child(3){left:68%;top:70%;animation-delay:1.5s}
+@keyframes artSpark{50%{transform:translateY(-9px);opacity:.2}}
+
+/* Mood overlays: standard HAPPY artwork is never redrawn. */
+.artwork-expression{
+  position:absolute;left:50%;top:58%;width:46%;height:24%;
+  transform:translate(-50%,-50%);z-index:6;pointer-events:none
+}
+.artwork-expression:before{
+  content:"";position:absolute;inset:5% 4%;border-radius:48%;
+  background:rgba(1,5,8,.92);filter:blur(2px)
+}
+.artwork-expression .eye,.artwork-expression .mouth,.artwork-expression .tear,
+.artwork-expression .zzz,.artwork-expression .question{position:absolute;z-index:2}
+.artwork-expression .eye{width:15%;height:37%;top:22%;background:#fff;border-radius:50%;box-shadow:0 0 8px rgba(255,255,255,.9)}
+.artwork-expression .eye-left{left:22%}.artwork-expression .eye-right{right:22%}
+.artwork-expression .mouth{left:35%;top:67%;width:30%;height:18%;border-bottom:3px solid #fff;border-radius:0 0 60% 60%}
+.expression-sad .eye{height:31%;top:27%}.expression-sad .mouth{border-bottom:0;border-top:3px solid #fff;border-radius:60% 60% 0 0;top:73%}
+.expression-sad .tear{right:12%;top:42%;width:7%;height:24%;background:#74dcff;border-radius:70% 30% 70% 30%;transform:rotate(45deg);box-shadow:0 0 8px #62cfff}
+.expression-sleepy .eye{height:3px;top:48%;border-radius:99px}.expression-sleepy .mouth{width:20%;left:40%;top:67%}.expression-sleepy .zzz{right:-13%;top:-15%;color:#b9eaff;font:700 14px Space Mono}
+.expression-calm .eye{height:3px;top:46%}.expression-calm .mouth{width:23%;left:38.5%}
+.expression-hyped .eye{height:30%;top:28%;transform:rotate(10deg)}.expression-hyped .eye-right{transform:rotate(-10deg)}
+.expression-curious .question{right:-8%;top:0;color:#d9f6ff;font:700 18px Space Mono}.expression-curious .mouth{width:18%;left:41%}
+
+/* Same exact artwork rig can receive skin treatment without touching state logic */
+.artwork-skin-tint{position:absolute;inset:0;z-index:5;mix-blend-mode:screen;opacity:.26;pointer-events:none;border-radius:50%}
+.artwork-skin-sakura .artwork-skin-tint{background:radial-gradient(circle,#ff83be 0,transparent 64%)}
+.artwork-skin-neon .artwork-skin-tint{background:radial-gradient(circle,#7e42ff 0,#17dfff 42%,transparent 68%);opacity:.35}
+.artwork-skin-kitsune .artwork-skin-tint{background:radial-gradient(circle,#ff6d3e 0,transparent 64%)}
+.artwork-skin-gold .artwork-skin-tint{background:radial-gradient(circle,#ffc84e 0,transparent 66%);opacity:.38}
+
+/* Chat */
+.chat-screen{min-height:100vh;background:
+  radial-gradient(circle at 73% 22%,rgba(35,112,159,.1),transparent 25%),
+  linear-gradient(180deg,#02070b,#040b11)}
+.chat-topbar{
+  height:92px;padding:16px 24px;border-bottom:1px solid #162a38;
+  display:flex;align-items:center;justify-content:space-between
+}
+.chat-topbar .brand{font-size:31px}.chat-topbar .tagline{font-size:11px;margin-top:8px}
+.profile-chip{
+  display:flex;align-items:center;gap:10px;border:1px solid #29465a;background:#061019;
+  border-radius:12px;padding:7px 11px;cursor:pointer
+}
+.profile-chip img{width:40px;height:40px;object-fit:contain}
+.profile-chip span{display:flex;flex-direction:column;text-align:left}
+.profile-chip strong{font:600 11px Space Mono;letter-spacing:.06em}
+.profile-chip small{font-size:9px;color:#6ed2ff;margin-top:4px}
+.chat-app{
+  height:calc(100vh - 92px);display:grid;grid-template-columns:290px minmax(0,1fr);
+  max-width:1380px;margin:0 auto;border-left:1px solid #132736;border-right:1px solid #132736
+}
+.chat-list-panel{border-right:1px solid #1a3040;background:rgba(3,9,14,.82);padding:14px}
+.chat-list-title{display:flex;justify-content:space-between;align-items:center;padding:8px 8px 13px;font:600 12px Space Mono;color:#a9bdd2}
+.chat-list-title button{border:1px solid #28465c;background:#07131d;width:30px;height:30px;border-radius:8px;cursor:pointer}
+.contact{
+  width:100%;display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;
+  border:1px solid transparent;background:transparent;border-radius:11px;padding:10px;text-align:left;cursor:pointer;margin-bottom:4px
+}
+.contact:hover,.contact.active{background:#081721;border-color:#17354a}
+.contact-avatar{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:#122331;color:#b7dcf7}
+.yokai-avatar{background:#06111a;overflow:hidden;box-shadow:0 0 12px rgba(79,201,255,.12)}
+.yokai-avatar img{width:115%;height:115%;object-fit:contain}
+.contact-copy{min-width:0}.contact-copy strong{display:block;font-size:12px}.contact-copy small{display:block;color:#8198b2;font-size:10px;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.contact time{font-size:9px;color:#7890aa}
+.conversation{display:grid;grid-template-rows:72px minmax(0,1fr) 78px;background:radial-gradient(circle at 50% 35%,rgba(24,79,111,.08),transparent 34%)}
+.conversation-head{display:flex;align-items:center;justify-content:space-between;padding:0 22px;border-bottom:1px solid #182d3b}
+.conversation-head strong{display:block;font:600 13px Space Mono}.conversation-head small{display:block;color:#7f96af;font-size:10px;margin-top:4px}
+.online-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:#64d7ff;box-shadow:0 0 8px #64d7ff;margin-right:5px}
+.ghost-button{border:1px solid #2e4c61;background:#07111a;border-radius:9px;padding:8px 12px;cursor:pointer;font-size:10px}
+.messages{overflow:auto;padding:28px clamp(18px,5vw,70px);display:flex;flex-direction:column;gap:12px}
+.message-row{display:flex;align-items:flex-end;gap:8px;max-width:74%}.message-row.outgoing{align-self:flex-end;flex-direction:row-reverse}.message-row.incoming{align-self:flex-start}
+.message-bubble{padding:11px 14px;border-radius:13px;background:#0b1721;border:1px solid #173145;color:#dce8f4;font-size:13px;line-height:1.45}
+.outgoing .message-bubble{background:#0a2130;border-color:#24506b}.message-row time{font-size:8px;color:#657d94}
+.message-row.system{align-self:center;max-width:100%;font-size:9px;color:#65829a;font-family:Space Mono}
+.composer{display:grid;grid-template-columns:1fr auto;gap:9px;padding:14px 20px;border-top:1px solid #172c3a}
+.composer input{border:1px solid #29465b;background:#071019;border-radius:11px;color:#eef7ff;padding:0 14px;outline:0}
+.composer input:focus{border-color:#55b8ef;box-shadow:0 0 0 2px rgba(82,184,239,.08)}
+.composer button{border:1px solid #4b7896;background:#0b2535;border-radius:10px;padding:0 18px;cursor:pointer}
+
+@media(max-width:760px){
+  .chat-topbar{height:78px;padding:12px 14px}.profile-chip strong{display:none}
+  .chat-app{height:calc(100vh - 78px);grid-template-columns:1fr}
+  .chat-list-panel{display:none}.conversation{grid-template-rows:64px minmax(0,1fr) 70px}
+  .message-row{max-width:88%}.messages{padding:20px 14px}
+  .artwork-character{width:58%;top:54%}
+}

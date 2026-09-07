@@ -8,6 +8,62 @@
   <link rel="stylesheet" href="/css/app.css">
 </head>
 <body>
+<section class="chat-screen" id="chatScreen">
+  <header class="chat-topbar">
+    <div>
+      <div class="brand">Y-CHAT</div>
+      <div class="tagline">SAME DARK. A LITTLE MORE LIFE.</div>
+    </div>
+    <button id="openYokaiProfile" class="profile-chip" type="button">
+      <img src="/assets/yokai-standard-exact.png" alt="">
+      <span><strong>YŌKAI // KAGE</strong><small id="chatMoodLabel">HAPPY</small></span>
+    </button>
+  </header>
+
+  <main class="chat-app">
+    <aside class="chat-list-panel">
+      <div class="chat-list-title"><span>Chats</span><button id="newChatBtn" type="button">＋</button></div>
+      <button class="contact active" data-contact="kage">
+        <span class="contact-avatar yokai-avatar"><img src="/assets/yokai-standard-exact.png" alt=""></span>
+        <span class="contact-copy"><strong>Yōkai</strong><small>Dein Mood-Begleiter</small></span>
+        <time>jetzt</time>
+      </button>
+      <button class="contact" data-contact="luna"><span class="contact-avatar">L</span><span class="contact-copy"><strong>Luna</strong><small>Das klingt echt gut!</small></span><time>20:52</time></button>
+      <button class="contact" data-contact="kaito"><span class="contact-avatar">K</span><span class="contact-copy"><strong>Kaito</strong><small>Ich bin dabei.</small></span><time>19:03</time></button>
+      <button class="contact" data-contact="mira"><span class="contact-avatar">M</span><span class="contact-copy"><strong>Mira</strong><small>Danke dir! ✦</small></span><time>18:41</time></button>
+    </aside>
+
+    <section class="conversation">
+      <header class="conversation-head">
+        <div>
+          <strong id="conversationTitle">Yōkai</strong>
+          <small><span class="online-dot"></span> Mood-Reaktion aktiv</small>
+        </div>
+        <button id="conversationProfileBtn" class="ghost-button" type="button">Yōkai ansehen</button>
+      </header>
+
+      <div class="messages" id="messages">
+        <div class="message-row incoming">
+          <div class="message-bubble">Hey. Ich bin da. Schreib einfach, was gerade los ist.</div>
+          <time>20:38</time>
+        </div>
+        <div class="message-row outgoing">
+          <div class="message-bubble">Bin gespannt, ob du meine Stimmung erkennst.</div>
+          <time>20:39</time>
+        </div>
+        <div class="message-row system">
+          <span>Yōkai reagiert live auf Tonlage und Keywords.</span>
+        </div>
+      </div>
+
+      <form class="composer" id="chatForm">
+        <input id="chatInput" autocomplete="off" maxlength="2000" placeholder="Nachricht schreiben …">
+        <button type="submit">Senden</button>
+      </form>
+    </section>
+  </main>
+</section>
+<section class="profile-screen" id="profileScreen">
   <div class="ambient ambient-a"></div>
   <div class="ambient ambient-b"></div>
 
@@ -136,8 +192,10 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="/js/yokai.js"></script>
-  <script src="/js/app.js"></script>
+
+</section>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/js/yokai.js"></script>
+<script src="/js/app.js"></script>
 </body>
 </html>

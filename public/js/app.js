@@ -25,7 +25,12 @@
 
   function renderHero(){
     const host=$('#heroYokai'); host.innerHTML='';
-    host.appendChild(Yokai.createScene({skin:state.skin,mood:state.mood,motion:state.motion,particles:state.particles}));
+    host.appendChild(Yokai.createArtworkScene({
+      skin:state.skin,
+      mood:state.mood,
+      motion:state.motion,
+      particles:state.particles
+    }));
     $('#activeMoodName').textContent=Yokai.moods[state.mood].name;
     $('#moodQuote').textContent=Yokai.moods[state.mood].quote;
     $('#coinBalance').textContent=state.coins;
@@ -174,4 +179,96 @@
   };
 
   renderAll();
+
+
+  // ---------- App router: chat is the primary screen ----------
+  const profileScreen = document.getElementById('profileScreen');
+  const chatScreen = document.getElementById('chatScreen');
+
+  function showScreen(name){
+    const profile = name === 'profile';
+    profileScreen.classList.toggle('screen-active', profile);
+    chatScreen.classList.toggle('screen-active', !profile);
+    document.body.dataset.screen = profile ? 'profile' : 'chat';
+    history.replaceState(null, '', profile ? '#yokai' : '#chat');
+  }
+
+  document.querySelector('.back-button')?.addEventListener('click', () => showScreen('chat'));
+  document.getElementById('openYokaiProfile')?.addEventListener('click', () => showScreen('profile'));
+  document.getElementById('conversationProfileBtn')?.addEventListener('click', () => showScreen('profile'));
+
+  // ---------- Essential chat flow ----------
+  const messagesHost = document.getElementById('messages');
+  const chatForm = document.getElementById('chatForm');
+  const chatInput = document.getElementById('chatInput');
+  const moodLabel = document.getElementById('chatMoodLabel');
+
+  function addMessage(text, direction='outgoing'){
+    const row = document.createElement('div');
+    row.className = `message-row ${direction}`;
+    const bubble = document.createElement('div');
+    bubble.className = 'message-bubble';
+    bubble.textContent = text;
+    const time = document.createElement('time');
+    time.textContent = new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+    row.append(bubble,time);
+    messagesHost.appendChild(row);
+    messagesHost.scrollTop = messagesHost.scrollHeight;
+  }
+
+  function reactToText(text){
+    const mood = window.YChatMood?.detect(text) || state.mood;
+    if (mood !== state.mood) {
+      state.mood = mood;
+      save();
+      renderAll();
+    }
+    if (moodLabel) moodLabel.textContent = Yokai.moods[mood].name;
+  }
+
+  chatForm?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = chatInput.value.trim();
+    if (!text) return;
+
+    addMessage(text,'outgoing');
+    reactToText(text);
+    chatInput.value = '';
+
+    // Keep Socket.IO behavior available. If no registered peer exists,
+    // the local demo still works and visibly reacts.
+    try {
+      window.socket?.emit('message:send',{
+        to:'kage',
+        text,
+        clientId:crypto.randomUUID?.() || String(Date.now())
+      });
+    } catch {}
+
+    window.setTimeout(() => {
+      const replies = {
+        sad:'Ich bin da. Du musst gerade nichts schönreden.',
+        sleepy:'Klingt nach wenig Energie. Wir machen langsam.',
+        hyped:'Okay — die Energie ist angekommen. ⚡',
+        curious:'Gute Frage. Erzähl mir mehr davon.',
+        calm:'Verstanden. Wir bleiben genau in diesem Tempo.',
+        happy:'Das klingt gut. Ich bleibe bei dir.'
+      };
+      addMessage(replies[state.mood] || replies.happy,'incoming');
+    }, 420);
+  });
+
+  document.querySelectorAll('.contact').forEach(btn => btn.addEventListener('click', () => {
+    document.querySelectorAll('.contact').forEach(x => x.classList.toggle('active', x===btn));
+    const title = btn.querySelector('strong')?.textContent || 'Chat';
+    document.getElementById('conversationTitle').textContent = title;
+  }));
+
+  document.getElementById('newChatBtn')?.addEventListener('click', () => {
+    chatInput?.focus();
+    toast('Neuer Chat bereit');
+  });
+
+  showScreen(location.hash === '#yokai' ? 'profile' : 'chat');
+
 })();

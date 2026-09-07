@@ -1,73 +1,50 @@
-# Y-Chat v0.5.0 — Scene + Character Rig
+# Y-Chat v0.6.0 — Exact Artwork Rig + Chat
 
-Komplette Demo im Stil der gelieferten Y-Chat-Designvorlage.
+Diese Version ändert die Rendering-Strategie.
 
-## Enthalten
+## Was jetzt anders ist
 
-- responsive Dark-UI mit Profil-/Phone-Panel
-- animierter SVG-Yōkai ohne externe Bilddateien
-- 6 Moods: `happy`, `calm`, `sleepy`, `sad`, `hyped`, `curious`
-- 5 Skins: Standard, Sakura, Neon, Kitsune, Gold
-- Skin-Shop mit YC-Guthaben, Freischalten und Ausrüsten
-- Speicherung in `localStorage`
-- Mood-Tabs, Reaktionsbeispiele, Stats und Einstellungen
-- vorhandenes Express + Socket.IO Backend bleibt kompatibel
-- Render-Konfiguration enthalten
+Der Standard-Yōkai wird im Profil nicht mehr per SVG "nachgezeichnet".
+Das tatsächlich gelieferte Referenz-Artwork wird als Pixel-Asset genutzt und in zwei Ebenen aufgeteilt:
 
-## Start lokal
+- `reference-scene-clean.jpg` — Szene / Hintergrund
+- `yokai-standard-exact.png` — transparenter Character-Layer aus derselben Vorlage
 
-```bash
-npm install
-npm start
-```
+Der Character-Layer kann unabhängig schweben und auf Klick bouncen. Dadurch bleibt der visuelle
+Standard-Yōkai tatsächlich das Referenz-Artwork und nicht eine angenäherte Code-Zeichnung.
 
-Danach `http://localhost:3000` öffnen.
+Happy nutzt das Artwork unverändert. Andere Moods werden als separate Expressions-/Effect-Layer
+darübergelegt, ohne die bestehende Mood-State-Logik zu ändern.
 
-## Browser API
+## Chat ist wieder Hauptansicht
+
+`#chat` öffnet den Chat, `#yokai` das Profil.
+
+Der Button **zurück zum Chat** ist wieder funktional. Zusätzlich öffnen der Profil-Chip im Chat
+und **Yōkai ansehen** wieder das Profil.
+
+Der Chat enthält:
+
+- lokale Demo-Nachrichten
+- Mood-Erkennung aus der bestehenden `YChatMood`-Logik
+- sichtbare Yōkai-Reaktionen
+- weiterhin Socket.IO-Anbindung an das vorhandene Backend
+
+## Bestehende APIs
 
 ```js
 Yokai.setMood('sad')
 Yokai.setSkin('sakura')
 Yokai.blink()
 Yokai.bounce()
-Yokai.sleep()
-Yokai.lookLeft()
-Yokai.lookRight()
-Yokai.lookCenter()
-
 YChatMood.react('mir geht es gerade echt nicht gut')
 ```
 
-Nicht freigeschaltete Skins öffnen beim Aufruf von `Yokai.setSkin(...)` automatisch den Shop.
+## Start
 
-## GitHub austauschen
-
-Die Dateien aus diesem Ordner können den Inhalt deines bisherigen Repositories ersetzen. `server.js`,
-`package.json` und `render.yaml` liegen wieder im Root; alle Frontend-Dateien liegen unter `public/`.
-
-Wenn Render bereits mit dem GitHub-Repository verbunden ist, genügt nach dem Commit/Push der normale
-Auto-Deploy.
-
-
-## v0.5.0 Rendering-Upgrade
-
-Die Darstellung wurde unterhalb der bestehenden API neu aufgebaut:
-
-- `Yokai.createScene(...)` rendert die komplette Profil-Szene als ein responsives SVG (`viewBox 0 0 400 520`)
-- Torii, Wald, Berge, Mond, Nebel, Ground-Glow und Spirit-Flames sind Teil derselben Szene
-- der Character-Core besitzt jetzt Füße, Arme, eine schlankere Flame-Silhouette und mehrere Glow-Layer
-- Skins bleiben reine Styling-/Extra-Layer
-- Moods ändern weiterhin nur Gesicht/Effekte und funktionieren auf jedem Skin
-- bestehende Shop-, LocalStorage-, Mood-Detection- und Socket.IO-Logik bleibt erhalten
-
-Damit bleibt die Logik:
-
-```txt
-State (skin + mood)
-        ↓
-     Yokai API
-        ↓
- Character Rig + Skin + Mood
-        ↓
-      Scene
+```bash
+npm install
+npm start
 ```
+
+Danach `http://localhost:3000`.

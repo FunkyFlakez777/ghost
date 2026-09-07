@@ -409,11 +409,76 @@
     });
   }
 
+
+  function createArtworkScene({skin='standard',mood='happy',motion=true,particles=true}={}){
+    const wrap = document.createElement('div');
+    wrap.className = `artwork-scene artwork-mood-${mood} artwork-skin-${skin} ${motion?'':'no-motion'} ${particles?'':'particles-off'}`;
+
+    const bg = document.createElement('img');
+    bg.className = 'artwork-background';
+    bg.src = '/assets/reference-scene-clean.jpg';
+    bg.alt = '';
+
+    const character = document.createElement('div');
+    character.className = 'artwork-character';
+
+    const art = document.createElement('img');
+    art.className = 'artwork-character-image';
+    art.src = '/assets/yokai-standard-exact.png';
+    art.alt = `Yōkai ${moods[mood]?.name || mood}`;
+
+    character.appendChild(art);
+
+    // Mood overlay is intentionally separate from the artwork.
+    // HAPPY stays visually untouched so the reference remains exact.
+    if (mood !== 'happy') {
+      const expression = document.createElement('div');
+      expression.className = `artwork-expression expression-${mood}`;
+      expression.innerHTML = `
+        <span class="eye eye-left"></span>
+        <span class="eye eye-right"></span>
+        <span class="mouth"></span>
+        ${mood==='sad'?'<span class="tear"></span>':''}
+        ${mood==='sleepy'?'<span class="zzz">Zz</span>':''}
+        ${mood==='curious'?'<span class="question">?</span>':''}
+      `;
+      character.appendChild(expression);
+    }
+
+    // Other skins remain fully functional: tint/effect layers sit above the same exact rig.
+    if (skin !== 'standard') {
+      const tint = document.createElement('div');
+      tint.className = 'artwork-skin-tint';
+      character.appendChild(tint);
+    }
+
+    wrap.append(bg, character);
+
+    if (particles) {
+      const fx = document.createElement('div');
+      fx.className = 'artwork-fx';
+      fx.innerHTML = '<i></i><i></i><i></i>';
+      wrap.appendChild(fx);
+    }
+
+    character.addEventListener('click', () => {
+      character.animate(
+        [{transform:'translate(-50%,-50%) translateY(0) scale(1)'},
+         {transform:'translate(-50%,-50%) translateY(-10px) scale(1.025)'},
+         {transform:'translate(-50%,-50%) translateY(0) scale(1)'}],
+        {duration:430,easing:'cubic-bezier(.2,.8,.2,1)'}
+      );
+    });
+
+    return wrap;
+  }
+
   window.Yokai = {
     skins:skinDefs,
     moods,
     create:createYokai,
     createScene,
+    createArtworkScene,
     setMood(mood){ window.dispatchEvent(new CustomEvent('yokai:setMood',{detail:{mood}})); },
     setSkin(skin){ window.dispatchEvent(new CustomEvent('yokai:setSkin',{detail:{skin}})); },
     blink(){
