@@ -1,44 +1,26 @@
-# Y-Chat v0.6.0 — Exact Artwork Rig + Chat
+# Y-Chat
 
-Diese Version ändert die Rendering-Strategie.
+Ein flüchtiger Live-Messenger mit persönlichem Yōkai-Begleiter.
 
-## Was jetzt anders ist
+## Messenger
 
-Der Standard-Yōkai wird im Profil nicht mehr per SVG "nachgezeichnet".
-Das tatsächlich gelieferte Referenz-Artwork wird als Pixel-Asset genutzt und in zwei Ebenen aufgeteilt:
+- Nutzer gehen mit einer Y-Chat-ID online.
+- Nachrichten werden nur zugestellt, wenn beide Kontakte online sind.
+- Nach dem Lesen läuft ein 60-Sekunden-Timer; danach verschwindet die Nachricht auf beiden Seiten.
+- Es gibt keine Offline-Speicherung und keinen Nachrichtenverlauf.
+- Der Prototyp verwendet noch keine Ende-zu-Ende-Verschlüsselung.
 
-- `reference-scene-clean.jpg` — Szene / Hintergrund
-- `yokai-standard-exact.png` — transparenter Character-Layer aus derselben Vorlage
+## Yōkai
 
-Der Character-Layer kann unabhängig schweben und auf Klick bouncen. Dadurch bleibt der visuelle
-Standard-Yōkai tatsächlich das Referenz-Artwork und nicht eine angenäherte Code-Zeichnung.
+Kage wertet keine Nachrichteninhalte aus. Seine Stimmung basiert nur auf Aktivität:
 
-Happy nutzt das Artwork unverändert. Andere Moods werden als separate Expressions-/Effect-Layer
-darübergelegt, ohne die bestehende Mood-State-Logik zu ändern.
+- **Happy:** 1–39 gesendete Nachrichten am aktuellen Tag
+- **Sleepy:** ab 40 gesendeten Nachrichten am aktuellen Tag
+- **Sad:** seit mindestens zwei Tagen nicht aktiv
 
-## Chat ist wieder Hauptansicht
+Jede gesendete Nachricht gibt 1 XP. Der erste Chat eines neuen, aufeinanderfolgenden Tages erhöht die Streak. Pro 100 XP steigt das Level; ein Levelaufstieg gibt 25 Yōkai Coins.
 
-`#chat` öffnet den Chat, `#yokai` das Profil.
-
-Der Button **zurück zum Chat** ist wieder funktional. Zusätzlich öffnen der Profil-Chip im Chat
-und **Yōkai ansehen** wieder das Profil.
-
-Der Chat enthält:
-
-- lokale Demo-Nachrichten
-- Mood-Erkennung aus der bestehenden `YChatMood`-Logik
-- sichtbare Yōkai-Reaktionen
-- weiterhin Socket.IO-Anbindung an das vorhandene Backend
-
-## Bestehende APIs
-
-```js
-Yokai.setMood('sad')
-Yokai.setSkin('sakura')
-Yokai.blink()
-Yokai.bounce()
-YChatMood.react('mir geht es gerade echt nicht gut')
-```
+Skins werden freigeschaltet auf Level 1 (Standard), 2 (Sakura), 4 (Neon), 7 (Kitsune) und 10 (Gold). Der Skin-Shop ist als Grundlage für später kaufbare Zusatz-Skins vorbereitet.
 
 ## Start
 
@@ -47,4 +29,4 @@ npm install
 npm start
 ```
 
-Danach `http://localhost:3000`.
+Danach läuft die App unter `http://localhost:3000`.

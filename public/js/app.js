@@ -1,274 +1,157 @@
-
 (() => {
-  const STORAGE_KEY = 'ychat_yokai_state_v040';
-  const defaultState = {
-    skin:'standard', mood:'happy', coins:650, xp:72, level:3,
-    unlocked:['standard'], motion:true, particles:true, moodDetect:true
+  const socket = io();
+  const $ = (id) => document.getElementById(id);
+  const STORE = 'ychat_progress_v1';
+  const unlockLevels = {standard:1, sakura:2, neon:4, kitsune:7, gold:10};
+  const skinNames = {standard:'Standard', sakura:'Sakura', neon:'Neon', kitsune:'Kitsune', gold:'Gold'};
+  const skinAssets = {standard:'/assets/yokai-standard-v2.png', sakura:'/assets/yokai-sakura.png', neon:'/assets/yokai-neon.png', kitsune:'/assets/yokai-kitsune.png', gold:'/assets/yokai-gold.png'};
+  const defaults = {xp:0, coins:0, messages:0, streak:0, lastActive:null, activeDate:null, todayMessages:0, skin:'standard'};
+  let progress;
+  try { progress = {...defaults, ...JSON.parse(localStorage.getItem(STORE) || '{}')}; }
+  catch { progress = {...defaults}; }
+  let me = '', peer = '', peerOnline = false;
+  const timers = new Map();
+
+  const dayKey = (date = new Date()) => {
+    const year = date.getFullYear(), month = String(date.getMonth() + 1).padStart(2, '0'), day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   };
-
-  let state;
-  try { state = {...defaultState, ...JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')}; }
-  catch { state = {...defaultState}; }
-
-  const $ = s => document.querySelector(s);
-  const $$ = s => [...document.querySelectorAll(s)];
-  const moodOrder = ['happy','calm','sleepy','sad','hyped','curious'];
-  const icons = {happy:'☻',calm:'◒',sleepy:'☾',sad:'☁',hyped:'ϟ',curious:'?'};
-
-  const save = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  const unlocked = id => state.unlocked.includes(id);
-
-  function toast(message){
-    const t=$('#toast'); t.textContent=message; t.classList.add('show');
-    clearTimeout(toast.timer); toast.timer=setTimeout(()=>t.classList.remove('show'),1900);
+  const daysBetween = (a, b) => Math.floor((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 86400000);
+  function normalizeProgress() {
+    const today = dayKey();
+    if (progress.activeDate && progress.activeDate !== today) progress.todayMessages = 0;
+    if (progress.lastActive && daysBetween(progress.lastActive, today) > 1) progress.streak = 0;
   }
-
-  function renderHero(){
-    const host=$('#heroYokai'); host.innerHTML='';
-    host.appendChild(Yokai.createArtworkScene({
-      skin:state.skin,
-      mood:state.mood,
-      motion:state.motion,
-      particles:state.particles
-    }));
-    $('#activeMoodName').textContent=Yokai.moods[state.mood].name;
-    $('#moodQuote').textContent=Yokai.moods[state.mood].quote;
-    $('#coinBalance').textContent=state.coins;
-    $('#modalBalance').textContent=state.coins;
-    $('#xpValue').textContent=state.xp;
-    $('#levelValue').textContent=state.level;
-    $('#xpBar').style.width=`${state.xp}%`;
+  normalizeProgress();
+  const save = () => localStorage.setItem(STORE, JSON.stringify(progress));
+  const level = () => Math.floor(progress.xp / 100) + 1;
+  function mood() {
+    const today = dayKey();
+    if (progress.lastActive && daysBetween(progress.lastActive, today) >= 2) return 'sad';
+    if (progress.todayMessages >= 40) return 'sleepy';
+    return 'happy';
   }
-
-  function renderMoodTabs(){
-    const host=$('#moodTabs'); host.innerHTML='';
-    moodOrder.forEach(m=>{
-      const b=document.createElement('button');
-      b.className=`mood-tab ${state.mood===m?'active':''}`;
-      b.innerHTML=`<span class="mood-icon">${icons[m]}</span><span>${Yokai.moods[m].name}</span>`;
-      b.addEventListener('click',()=>setMood(m));
-      host.appendChild(b);
-    });
-  }
-
-  function skinCard(id){
-    const d=Yokai.skins[id], card=document.createElement('button');
-    card.className=`skin-card ${state.skin===id?'active':''}`;
-    card.innerHTML=`<div class="skin-yokai"></div><h3>${d.name}</h3><div class="skin-status"></div>`;
-    card.querySelector('.skin-yokai').appendChild(Yokai.create({skin:id,mood:state.mood,size:118,motion:state.motion,particles:state.particles}));
-    const status=card.querySelector('.skin-status');
-    if(state.skin===id) status.textContent='Aktiv';
-    else if(unlocked(id)) status.textContent='Freigeschaltet';
-    else status.innerHTML=`<span class="price"><span class="coin">◉</span>${d.price} YC</span>`;
-    card.addEventListener('click',()=>{
-      if(unlocked(id)){ state.skin=id; save(); renderAll(); toast(`${d.name} ausgerüstet`); }
-      else openShop();
-    });
-    return card;
-  }
-
-  function renderSkins(){
-    const host=$('#skinsGrid'); host.innerHTML='';
-    Object.keys(Yokai.skins).forEach(id=>host.appendChild(skinCard(id)));
-    $('#skinSectionTitle').textContent=`${Yokai.moods[state.mood].name} SKINS`;
-  }
-
-  function renderAccordions(){
-    const host=$('#moodAccordions'); host.innerHTML='';
-    moodOrder.filter(m=>m!==state.mood).forEach(m=>{
-      const b=document.createElement('button'); b.className='accordion';
-      b.innerHTML=`<span><span class="acc-icon">${icons[m]}</span>${Yokai.moods[m].name} SKINS</span><span>›</span>`;
-      b.addEventListener('click',()=>setMood(m));
-      host.appendChild(b);
-    });
-  }
-
-  function renderReactions(){
-    const host=$('#reactionGrid'); host.innerHTML='';
-    moodOrder.forEach(m=>{
-      const item=document.createElement('div'); item.className='reaction-item';
-      item.innerHTML=`<div class="mini-yokai"></div><strong>${Yokai.moods[m].name}</strong><span>${Yokai.moods[m].quote.replace(/[„“]/g,'')}</span>`;
-      item.querySelector('.mini-yokai').appendChild(Yokai.create({skin:'standard',mood:m,size:86,motion:state.motion,particles:false}));
-      host.appendChild(item);
-    });
-    const sad=$('#sadPreview'); sad.innerHTML=''; sad.appendChild(Yokai.create({skin:'standard',mood:'sad',size:132,motion:state.motion,particles:state.particles}));
-  }
-
-  function renderModal(){
-    const host=$('#modalGrid'); host.innerHTML='';
-    Object.keys(Yokai.skins).filter(id=>id!=='standard').forEach(id=>{
-      const d=Yokai.skins[id], box=document.createElement('div'); box.className='modal-skin';
-      const owned=unlocked(id), active=state.skin===id, affordable=state.coins>=d.price;
-      box.innerHTML=`<div class="skin-art"></div><strong>${d.name}</strong><div class="skin-status">${owned?'Freigeschaltet':`◉ ${d.price} YC`}</div><button>${active?'Aktiv':owned?'Ausrüsten':affordable?'Kaufen':'Zu wenig YC'}</button>`;
-      box.querySelector('.skin-art').appendChild(Yokai.create({skin:id,mood:state.mood,size:102,motion:state.motion,particles:state.particles}));
-      const btn=box.querySelector('button'); btn.disabled=active || (!owned && !affordable);
-      btn.addEventListener('click',()=> buyOrEquip(id));
-      host.appendChild(box);
-    });
-    $('#modalBalance').textContent=state.coins;
-  }
-
-  function buyOrEquip(id){
-    const d=Yokai.skins[id];
-    if(unlocked(id)){
-      state.skin=id; save(); renderAll(); renderModal(); toast(`${d.name} ausgerüstet`);
-      return;
-    }
-    if(state.coins<d.price) return toast('Nicht genug YC');
-    state.coins-=d.price; state.unlocked=[...state.unlocked,id]; state.skin=id;
-    save(); renderAll(); renderModal(); toast(`${d.name} freigeschaltet`);
-  }
-
-  function setMood(mood){
-    if(!Yokai.moods[mood]) return;
-    state.mood=mood; save(); renderAll();
-  }
-
-  function cycleSkin(dir){
-    const ids=Object.keys(Yokai.skins).filter(unlocked);
-    let i=ids.indexOf(state.skin); i=(i+dir+ids.length)%ids.length;
-    state.skin=ids[i]; save(); renderAll();
-  }
-
-  function openShop(){ renderModal(); $('#shopModal').showModal(); }
-  function renderAll(){
-    renderHero(); renderMoodTabs(); renderSkins(); renderAccordions(); renderReactions();
-  }
-
-  $('#prevSkin').addEventListener('click',()=>cycleSkin(-1));
-  $('#nextSkin').addEventListener('click',()=>cycleSkin(1));
-  $('#shopButton').addEventListener('click',openShop);
-  $('#modalClose').addEventListener('click',()=>$('#shopModal').close());
-  $('#shopModal').addEventListener('click',e=>{if(e.target===$('#shopModal')) $('#shopModal').close()});
-
-  $$('.phone-tab').forEach(b=>b.addEventListener('click',()=>{
-    $$('.phone-tab').forEach(x=>x.classList.toggle('active',x===b));
-    $$('.view').forEach(v=>v.classList.toggle('active',v.id===`view-${b.dataset.panel}`));
-  }));
-
-  $('#toggleMotion').checked=state.motion;
-  $('#toggleParticles').checked=state.particles;
-  $('#toggleMoodDetect').checked=state.moodDetect;
-  $('#toggleMotion').addEventListener('change',e=>{state.motion=e.target.checked;save();renderAll()});
-  $('#toggleParticles').addEventListener('change',e=>{state.particles=e.target.checked;save();renderAll()});
-  $('#toggleMoodDetect').addEventListener('change',e=>{state.moodDetect=e.target.checked;save()});
-
-  window.addEventListener('yokai:setMood',e=>setMood(e.detail.mood));
-  window.addEventListener('yokai:setSkin',e=>{
-    const id=e.detail.skin;
-    if(!Yokai.skins[id]) return;
-    if(unlocked(id)){state.skin=id;save();renderAll()} else openShop();
-  });
-
-  // Optional Socket.IO connection: leaves existing chat/presence backend compatible.
-  try { window.socket = io({autoConnect:true}); } catch {}
-
-  // Tiny browser API for future chat mood detection.
-  window.YChatMood = {
-    detect(text=''){
-      if(!state.moodDetect) return state.mood;
-      const t=text.toLowerCase();
-      if(/traurig|schlecht|nicht gut|allein|vermiss/.test(t)) return 'sad';
-      if(/müde|schlafen|nacht|kaputt/.test(t)) return 'sleepy';
-      if(/wow|krass|lets go|geil|mega|!!!/.test(t)) return 'hyped';
-      if(/\?|warum|wieso|wie |was /.test(t)) return 'curious';
-      if(/ruhig|okay|passt|entspannt|flow/.test(t)) return 'calm';
-      return 'happy';
-    },
-    react(text){ setMood(this.detect(text)); }
+  const moodText = {
+    happy:'Du bist regelmäßig da. Kage freut sich.',
+    sleepy:'Das war viel für heute. Kage braucht eine Pause.',
+    sad:'Es war lange still. Kage hat dich vermisst.'
   };
+  function toast(text) { const el = $('toast'); el.textContent = text; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 1800); }
 
-  renderAll();
+  function route(name) {
+    document.querySelectorAll('.screen').forEach(el => el.classList.toggle('active', el.id === `screen-${name}`));
+    history.replaceState(null, '', name === 'yokai' ? '#yokai' : '#chat');
+    if (name === 'yokai') renderYokai();
+  }
+  document.querySelectorAll('[data-route]').forEach(button => button.addEventListener('click', () => route(button.dataset.route)));
 
-
-  // ---------- App router: chat is the primary screen ----------
-  const profileScreen = document.getElementById('profileScreen');
-  const chatScreen = document.getElementById('chatScreen');
-
-  function showScreen(name){
-    const profile = name === 'profile';
-    profileScreen.classList.toggle('screen-active', profile);
-    chatScreen.classList.toggle('screen-active', !profile);
-    document.body.dataset.screen = profile ? 'profile' : 'chat';
-    history.replaceState(null, '', profile ? '#yokai' : '#chat');
+  function renderYokai() {
+    normalizeProgress(); save();
+    const currentMood = mood(), currentLevel = level();
+    $('levelValue').textContent = currentLevel;
+    $('xpValue').textContent = progress.xp % 100;
+    $('xpBar').style.width = `${progress.xp % 100}%`;
+    $('coinValue').textContent = progress.coins;
+    $('dialogCoins').textContent = progress.coins;
+    $('messageCount').textContent = progress.messages;
+    $('streakValue').textContent = progress.streak;
+    $('moodName').textContent = currentMood.toUpperCase();
+    $('sidebarMood').textContent = currentMood.toUpperCase();
+    $('moodCopy').textContent = moodText[currentMood];
+    const scene = document.createElement('div'); scene.className = `rendered-scene mood-${currentMood}`;
+    const background = document.createElement('img'); background.className = 'rendered-background'; background.src = '/assets/reference-scene-clean.jpg'; background.alt = '';
+    const character = document.createElement('img'); character.className = 'rendered-character'; character.src = skinAssets[progress.skin]; character.alt = `${skinNames[progress.skin]} Yōkai, ${currentMood}`;
+    scene.append(background, character);
+    if (currentMood === 'sleepy') { const fx = document.createElement('span'); fx.className = 'mood-fx'; fx.textContent = 'Zz'; scene.appendChild(fx); }
+    if (currentMood === 'sad') { const fx = document.createElement('span'); fx.className = 'mood-fx'; fx.textContent = '·'; scene.appendChild(fx); }
+    $('yokaiHero').replaceChildren(scene);
+    document.querySelectorAll('.yokai-thumb').forEach(img => img.src = skinAssets[progress.skin]);
+    document.querySelectorAll('.rule-grid article').forEach((el, index) => el.classList.toggle('active', ['happy','sleepy','sad'][index] === currentMood));
+    renderSkins();
   }
 
-  document.querySelector('.back-button')?.addEventListener('click', () => showScreen('chat'));
-  document.getElementById('openYokaiProfile')?.addEventListener('click', () => showScreen('profile'));
-  document.getElementById('conversationProfileBtn')?.addEventListener('click', () => showScreen('profile'));
-
-  // ---------- Essential chat flow ----------
-  const messagesHost = document.getElementById('messages');
-  const chatForm = document.getElementById('chatForm');
-  const chatInput = document.getElementById('chatInput');
-  const moodLabel = document.getElementById('chatMoodLabel');
-
-  function addMessage(text, direction='outgoing'){
-    const row = document.createElement('div');
-    row.className = `message-row ${direction}`;
-    const bubble = document.createElement('div');
-    bubble.className = 'message-bubble';
-    bubble.textContent = text;
-    const time = document.createElement('time');
-    time.textContent = new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
-    row.append(bubble,time);
-    messagesHost.appendChild(row);
-    messagesHost.scrollTop = messagesHost.scrollHeight;
+  function renderSkins() {
+    const host = $('skinGrid'); host.innerHTML = '';
+    Object.keys(unlockLevels).forEach(id => {
+      const required = unlockLevels[id], available = level() >= required;
+      const card = document.createElement('button');
+      card.className = `skin-card ${progress.skin === id ? 'active' : ''} ${available ? '' : 'locked'}`;
+      card.type = 'button';
+      const preview = document.createElement('div'); preview.className = 'skin-card-preview';
+      const image = document.createElement('img'); image.src = skinAssets[id]; image.alt = `${skinNames[id]} Skin`; preview.appendChild(image);
+      const title = document.createElement('h3'); title.textContent = skinNames[id];
+      const caption = document.createElement('p'); caption.textContent = progress.skin === id ? 'AKTIV' : available ? 'FREIGESCHALTET' : `AB LEVEL ${required}`;
+      card.append(preview, title, caption);
+      if (!available) { const lock = document.createElement('span'); lock.className = 'lock-tag'; lock.textContent = `LVL ${required}`; card.appendChild(lock); }
+      if (available) card.addEventListener('click', () => { progress.skin = id; save(); renderYokai(); toast(`${skinNames[id]} ausgerüstet`); });
+      host.appendChild(card);
+    });
   }
 
-  function reactToText(text){
-    const mood = window.YChatMood?.detect(text) || state.mood;
-    if (mood !== state.mood) {
-      state.mood = mood;
-      save();
-      renderAll();
+  function recordSentMessage() {
+    const today = dayKey();
+    if (progress.activeDate !== today) {
+      progress.streak = progress.lastActive && daysBetween(progress.lastActive, today) === 1 ? progress.streak + 1 : 1;
+      progress.todayMessages = 0;
+      progress.activeDate = today;
     }
-    if (moodLabel) moodLabel.textContent = Yokai.moods[mood].name;
+    const oldLevel = level();
+    progress.messages += 1; progress.todayMessages += 1; progress.xp += 1; progress.lastActive = today;
+    if (level() > oldLevel) { progress.coins += 25; toast(`Level ${level()} · +25 YC`); }
+    save(); renderYokai();
   }
 
-  chatForm?.addEventListener('submit', (e) => {
-    e.preventDefault();
-    const text = chatInput.value.trim();
-    if (!text) return;
+  function updatePeer(online) {
+    peerOnline = online;
+    $('peerName').textContent = peer || 'Noch kein Kontakt';
+    $('conversationName').textContent = peer || 'Wähle einen Kontakt';
+    $('peerState').textContent = peer ? (online ? 'Jetzt online' : 'Gerade offline') : 'ID eingeben und prüfen';
+    $('conversationState').textContent = peer ? (online ? 'Online · Nachrichten live' : 'Offline · keine Zustellung') : 'Nicht verbunden';
+    $('peerDot').classList.toggle('on', online); $('headDot').classList.toggle('on', online);
+    $('messageInput').disabled = !(me && peer && online); $('sendButton').disabled = !(me && peer && online);
+    if (me && peer) $('emptyChat').classList.add('hidden');
+  }
 
-    addMessage(text,'outgoing');
-    reactToText(text);
-    chatInput.value = '';
-
-    // Keep Socket.IO behavior available. If no registered peer exists,
-    // the local demo still works and visibly reacts.
-    try {
-      window.socket?.emit('message:send',{
-        to:'kage',
-        text,
-        clientId:crypto.randomUUID?.() || String(Date.now())
-      });
-    } catch {}
-
-    window.setTimeout(() => {
-      const replies = {
-        sad:'Ich bin da. Du musst gerade nichts schönreden.',
-        sleepy:'Klingt nach wenig Energie. Wir machen langsam.',
-        hyped:'Okay — die Energie ist angekommen. ⚡',
-        curious:'Gute Frage. Erzähl mir mehr davon.',
-        calm:'Verstanden. Wir bleiben genau in diesem Tempo.',
-        happy:'Das klingt gut. Ich bleibe bei dir.'
-      };
-      addMessage(replies[state.mood] || replies.happy,'incoming');
-    }, 420);
+  $('identityForm').addEventListener('submit', e => {
+    e.preventDefault(); const id = $('myId').value.trim(); if (!id) return;
+    socket.emit('register', {id}, result => {
+      if (!result?.ok) return toast('ID konnte nicht aktiviert werden');
+      me = result.id; $('identityLabel').textContent = `Online als ${me}`; $('identityOrb').classList.add('on');
+      $('myId').disabled = true; e.currentTarget.querySelector('button').disabled = true; updatePeer(peerOnline);
+    });
   });
-
-  document.querySelectorAll('.contact').forEach(btn => btn.addEventListener('click', () => {
-    document.querySelectorAll('.contact').forEach(x => x.classList.toggle('active', x===btn));
-    const title = btn.querySelector('strong')?.textContent || 'Chat';
-    document.getElementById('conversationTitle').textContent = title;
-  }));
-
-  document.getElementById('newChatBtn')?.addEventListener('click', () => {
-    chatInput?.focus();
-    toast('Neuer Chat bereit');
+  $('peerForm').addEventListener('submit', e => {
+    e.preventDefault(); peer = $('peerId').value.trim(); if (!peer) return;
+    socket.emit('presence:check', {id:peer}, ({online}) => updatePeer(online));
   });
+  $('newChat').addEventListener('click', () => { $('peerId').value = ''; $('peerId').focus(); });
+  socket.on('presence:update', ({id, online}) => { if (id === peer) updatePeer(online); });
 
-  showScreen(location.hash === '#yokai' ? 'profile' : 'chat');
+  function addMessage(data, mine) {
+    $('emptyChat').classList.add('hidden');
+    const item = document.createElement('div'); item.className = `message ${mine ? 'mine' : ''}`; item.dataset.id = data.clientId;
+    const bubble = document.createElement('div'); bubble.className = 'bubble'; bubble.textContent = data.text;
+    const meta = document.createElement('div'); meta.className = 'message-meta'; meta.innerHTML = `<span>${mine ? 'GESENDET' : 'GELESEN'}</span> · <span class="timer">${mine ? 'WARTET' : '60s'}</span>`;
+    item.append(bubble, meta); $('messages').appendChild(item); $('messages').scrollTop = $('messages').scrollHeight;
+    if (!mine) { const readAt = Date.now(); socket.emit('message:read', {to:data.from, clientId:data.clientId, readAt}); startTimer(data.clientId, readAt); }
+  }
+  function startTimer(clientId, readAt) {
+    const item = document.querySelector(`[data-id="${CSS.escape(clientId)}"]`); if (!item) return;
+    const label = item.querySelector('.timer'); clearInterval(timers.get(clientId));
+    const tick = () => { const left = Math.max(0, 60 - Math.floor((Date.now() - readAt) / 1000)); label.textContent = `${left}s`; if (!left) { clearInterval(timers.get(clientId)); timers.delete(clientId); item.classList.add('gone'); setTimeout(() => item.remove(), 350); } };
+    tick(); timers.set(clientId, setInterval(tick, 250));
+  }
+  $('messageForm').addEventListener('submit', e => {
+    e.preventDefault(); const text = $('messageInput').value.trim(); if (!text || !me || !peerOnline) return;
+    socket.emit('message:send', {to:peer, text, clientId:crypto.randomUUID()}); $('messageInput').value = '';
+  });
+  socket.on('message:sent', data => { addMessage(data, true); recordSentMessage(); });
+  socket.on('message:incoming', data => { if (!peer) { peer = data.from; $('peerId').value = peer; updatePeer(true); } if (data.from === peer) addMessage(data, false); });
+  socket.on('message:read', ({clientId, readAt}) => startTimer(clientId, readAt));
+  socket.on('message:error', () => { updatePeer(false); toast('Kontakt ist offline. Nichts wurde gespeichert.'); });
 
+  $('shopButton').addEventListener('click', () => $('shopDialog').showModal());
+  $('closeShop').addEventListener('click', () => $('shopDialog').close());
+  $('shopDialog').addEventListener('click', e => { if (e.target === $('shopDialog')) $('shopDialog').close(); });
+  renderYokai(); route(location.hash === '#yokai' ? 'yokai' : 'chat');
 })();
