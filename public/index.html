@@ -14,7 +14,15 @@
 <main class="conversation">
 <header class="conversation-head"><div><span class="mobile-label">Y-CHAT</span><strong id="conversationName">Wähle einen Kontakt</strong><small><i class="presence-dot" id="headDot"></i><span id="conversationState">Nicht verbunden</span></small></div><div class="head-actions"><span class="vanish-note">Nach dem Lesen · 60s</span><button data-route="yokai"><img class="yokai-thumb" src="/assets/yokai-standard-v2.png" alt="Yōkai öffnen"></button></div></header>
 <div class="empty-chat" id="emptyChat"><span class="ghost-mark">◌</span><h1>Nur jetzt zählt.</h1><p>Y-Chat speichert keinen Verlauf. Beide müssen gleichzeitig online sein.</p></div><div class="messages" id="messages" aria-live="polite"></div>
-<form class="composer" id="messageForm"><input id="messageInput" maxlength="2000" placeholder="Nur live zustellbar …" disabled autocomplete="off"><button id="sendButton" disabled>↑</button></form><p class="security-note">PROTOTYP · NOCH KEINE ENDE-ZU-ENDE-VERSCHLÜSSELUNG</p>
+<form class="composer" id="messageForm">
+  <button class="emoji-trigger" id="emojiTrigger" type="button" disabled aria-label="Yōkai Smileys öffnen" aria-expanded="false">☻</button>
+  <div class="emoji-picker" id="emojiPicker" hidden>
+    <div class="emoji-picker-head"><strong>YŌKAI SMILEYS</strong><span>SHORTCUTS FUNKTIONIEREN AUCH</span></div>
+    <div class="emoji-grid" id="emojiGrid"></div>
+    <div class="shortcut-hint"><span><b>;-)</b> Zwinker</span><span><b>:-)</b> Freuen</span><span><b>:D</b> Lachen</span><span><b>:-(</b> Traurig</span></div>
+  </div>
+  <input id="messageInput" maxlength="2000" placeholder="Nur live zustellbar …" disabled autocomplete="off"><button id="sendButton" disabled>↑</button>
+</form><p class="security-note">PROTOTYP · NOCH KEINE ENDE-ZU-ENDE-VERSCHLÜSSELUNG</p>
 </main></section>
 <section class="screen yokai-screen" id="screen-yokai">
 <div class="yokai-profile"><div class="profile-top"><div><small>DEIN YŌKAI</small><h1>KAGE</h1></div><button data-route="chat">← Chat</button></div><div class="level-row"><span>LEVEL <strong id="levelValue">1</strong></span><span><b id="xpValue">0</b>/100 XP</span></div><div class="xp-track"><i id="xpBar"></i></div><div class="hero" id="yokaiHero"></div><div class="mood-card"><span>MOOD</span><strong id="moodName">HAPPY</strong><p id="moodCopy">Du bist regelmäßig da. Kage freut sich.</p></div><div class="quick-stats"><div><strong id="coinValue">0</strong><span>YŌKAI COINS</span></div><div><strong id="messageCount">0</strong><span>NACHRICHTEN</span></div><div><strong id="streakValue">0</strong><span>TAGE STREAK</span></div></div></div>

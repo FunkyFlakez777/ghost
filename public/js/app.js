@@ -5,6 +5,17 @@
   const unlockLevels = {standard:1, sakura:2, neon:4, kitsune:7, gold:10};
   const skinNames = {standard:'Standard', sakura:'Sakura', neon:'Neon', kitsune:'Kitsune', gold:'Gold'};
   const skinAssets = {standard:'/assets/yokai-standard-v2.png', sakura:'/assets/yokai-sakura.png', neon:'/assets/yokai-neon.png', kitsune:'/assets/yokai-kitsune.png', gold:'/assets/yokai-gold.png'};
+  const reactions = [
+    {id:'happy', label:'Freuen', shortcut:':-)', col:1, row:0, emoji:'😊'},
+    {id:'laugh', label:'Lachen', shortcut:':D', col:2, row:0, emoji:'😄'},
+    {id:'wink', label:'Zwinkern', shortcut:';-)', col:6, row:0, emoji:'😉'},
+    {id:'sad', label:'Traurig', shortcut:':-(', col:6, row:2, emoji:'😢'},
+    {id:'angry', label:'Wütend', shortcut:'>:(', col:9, row:3, emoji:'😠'},
+    {id:'devil', label:'Devil', shortcut:'}:)', col:4, row:2, emoji:'😈'},
+    {id:'love', label:'Verliebt', shortcut:'<3', col:0, row:4, emoji:'😍'},
+    {id:'sleepy', label:'Müde', shortcut:'-_-', col:9, row:0, emoji:'😴'},
+    {id:'confused', label:'Verwirrt', shortcut:':-?', col:8, row:0, emoji:'🤔'}
+  ];
   const defaults = {xp:0, coins:0, messages:0, streak:0, lastActive:null, activeDate:null, todayMessages:0, skin:'standard'};
   let progress;
   try { progress = {...defaults, ...JSON.parse(localStorage.getItem(STORE) || '{}')}; }
@@ -108,7 +119,7 @@
     $('peerState').textContent = peer ? (online ? 'Jetzt online' : 'Gerade offline') : 'ID eingeben und prüfen';
     $('conversationState').textContent = peer ? (online ? 'Online · Nachrichten live' : 'Offline · keine Zustellung') : 'Nicht verbunden';
     $('peerDot').classList.toggle('on', online); $('headDot').classList.toggle('on', online);
-    $('messageInput').disabled = !(me && peer && online); $('sendButton').disabled = !(me && peer && online);
+    $('messageInput').disabled = !(me && peer && online); $('sendButton').disabled = !(me && peer && online); $('emojiTrigger').disabled = !(me && peer && online);
     if (me && peer) $('emptyChat').classList.add('hidden');
   }
 
@@ -130,7 +141,13 @@
   function addMessage(data, mine) {
     $('emptyChat').classList.add('hidden');
     const item = document.createElement('div'); item.className = `message ${mine ? 'mine' : ''}`; item.dataset.id = data.clientId;
-    const bubble = document.createElement('div'); bubble.className = 'bubble'; bubble.textContent = data.text;
+    const bubble = document.createElement('div'); bubble.className = 'bubble';
+    const stickerMatch = /^\[\[yokai:([a-z]+)\]\]$/.exec(data.text);
+    const reaction = stickerMatch && reactions.find(item => item.id === stickerMatch[1]);
+    if (reaction) {
+      bubble.classList.add('sticker-bubble');
+      const sticker = document.createElement('span'); sticker.className = 'yokai-sticker'; sticker.setAttribute('role','img'); sticker.setAttribute('aria-label', reaction.label); sticker.style.setProperty('--sprite-x', `${reaction.col / 9 * 100}%`); sticker.style.setProperty('--sprite-y', `${reaction.row / 4 * 100}%`); bubble.appendChild(sticker);
+    } else bubble.textContent = data.text;
     const meta = document.createElement('div'); meta.className = 'message-meta'; meta.innerHTML = `<span>${mine ? 'GESENDET' : 'GELESEN'}</span> · <span class="timer">${mine ? 'WARTET' : '60s'}</span>`;
     item.append(bubble, meta); $('messages').appendChild(item); $('messages').scrollTop = $('messages').scrollHeight;
     if (!mine) { const readAt = Date.now(); socket.emit('message:read', {to:data.from, clientId:data.clientId, readAt}); startTimer(data.clientId, readAt); }
@@ -142,13 +159,27 @@
     tick(); timers.set(clientId, setInterval(tick, 250));
   }
   $('messageForm').addEventListener('submit', e => {
-    e.preventDefault(); const text = $('messageInput').value.trim(); if (!text || !me || !peerOnline) return;
+    e.preventDefault(); let text = $('messageInput').value.trim(); if (!text || !me || !peerOnline) return;
+    const exact = reactions.find(item => item.shortcut === text);
+    if (exact) text = `[[yokai:${exact.id}]]`;
+    else reactions.forEach(item => { text = text.split(item.shortcut).join(item.emoji); });
     socket.emit('message:send', {to:peer, text, clientId:crypto.randomUUID()}); $('messageInput').value = '';
+    $('emojiPicker').hidden = true; $('emojiTrigger').setAttribute('aria-expanded','false');
   });
   socket.on('message:sent', data => { addMessage(data, true); recordSentMessage(); });
   socket.on('message:incoming', data => { if (!peer) { peer = data.from; $('peerId').value = peer; updatePeer(true); } if (data.from === peer) addMessage(data, false); });
   socket.on('message:read', ({clientId, readAt}) => startTimer(clientId, readAt));
   socket.on('message:error', () => { updatePeer(false); toast('Kontakt ist offline. Nichts wurde gespeichert.'); });
+
+  reactions.forEach(item => {
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'emoji-option'; button.title = `${item.label} · ${item.shortcut}`;
+    const sprite = document.createElement('span'); sprite.className = 'emoji-sprite'; sprite.style.setProperty('--sprite-x', `${item.col / 9 * 100}%`); sprite.style.setProperty('--sprite-y', `${item.row / 4 * 100}%`);
+    const label = document.createElement('small'); label.textContent = item.label; button.append(sprite, label);
+    button.addEventListener('click', () => { $('messageInput').value = item.shortcut; $('messageInput').focus(); $('emojiPicker').hidden = true; $('emojiTrigger').setAttribute('aria-expanded','false'); });
+    $('emojiGrid').appendChild(button);
+  });
+  $('emojiTrigger').addEventListener('click', () => { const opening = $('emojiPicker').hidden; $('emojiPicker').hidden = !opening; $('emojiTrigger').setAttribute('aria-expanded', String(opening)); });
+  document.addEventListener('click', e => { if (!e.target.closest('.composer')) { $('emojiPicker').hidden = true; $('emojiTrigger').setAttribute('aria-expanded','false'); } });
 
   $('shopButton').addEventListener('click', () => $('shopDialog').showModal());
   $('closeShop').addEventListener('click', () => $('shopDialog').close());
