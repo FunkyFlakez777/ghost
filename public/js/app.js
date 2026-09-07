@@ -25,7 +25,7 @@
 
   function renderHero(){
     const host=$('#heroYokai'); host.innerHTML='';
-    host.appendChild(Yokai.create({skin:state.skin,mood:state.mood,size:215,motion:state.motion,particles:state.particles}));
+    host.appendChild(Yokai.createScene({skin:state.skin,mood:state.mood,motion:state.motion,particles:state.particles}));
     $('#activeMoodName').textContent=Yokai.moods[state.mood].name;
     $('#moodQuote').textContent=Yokai.moods[state.mood].quote;
     $('#coinBalance').textContent=state.coins;

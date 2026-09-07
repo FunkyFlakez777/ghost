@@ -111,3 +111,88 @@ h1{font-size:19px}.panel-title-row p{color:var(--muted);font-size:13px;letter-sp
   .brand{font-size:29px}.tagline,.story{font-size:10px}.phone-inner{padding-left:12px;padding-right:12px}.stats-row{gap:6px}.mini-stat{padding:7px;font-size:11px}.phone-tab{font-size:9px}.panel-title-row{display:block}.shop-button{margin-top:15px}.mood-tabs{grid-template-columns:repeat(2,1fr)}.skins-grid{grid-template-columns:1fr 1fr}.detection-body{grid-template-columns:1fr}.reaction-preview{display:none}.modal-grid{grid-template-columns:1fr 1fr}.quote-band{font-size:12px}.stats-dashboard{grid-template-columns:1fr}.dash-card.wide{grid-column:auto}
 }
 @media (prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.001ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}}
+
+
+/* v0.5.0 — Scene/Rig renderer */
+.character-scene{
+  height:355px;
+  margin:2px -14px 0;
+  overflow:hidden;
+  border-radius:14px;
+}
+.character-scene>.moon,
+.character-scene>.mist,
+.character-scene>.mountains{display:none!important}
+.character-scene:before,
+.character-scene:after{display:none!important}
+.hero-yokai{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:2;
+}
+.yokai-scene-svg{
+  display:block;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+}
+.yokai-rig{
+  transform-box:fill-box;
+  transform-origin:center bottom;
+  animation:yokaiHeroFloat 4.6s ease-in-out infinite;
+}
+.yokai-rig.no-motion{animation:none!important}
+.compact-yokai .yokai-rig{
+  animation:yokaiCompactFloat 3.9s ease-in-out infinite;
+}
+.yokai-rig .body{
+  paint-order:stroke fill;
+}
+.yokai-rig .body-glow{
+  opacity:.64;
+}
+.yokai-rig .eye{
+  transform-box:fill-box;
+  transform-origin:center;
+  animation:yokaiBlink 6.3s infinite;
+}
+.yokai-rig .mouth{
+  filter:drop-shadow(0 0 3px rgba(255,255,255,.28));
+}
+.yokai-rig .foot{
+  filter:drop-shadow(0 0 4px var(--yokai-glow,#63d8ff));
+}
+.yokai-rig .particle,
+.yokai-rig .scene-spirit{
+  animation:spiritDrift 2.8s ease-in-out infinite;
+  transform-origin:center;
+}
+.yokai-scene-svg .scene-spirit{
+  animation:sceneSpirit 3.2s ease-in-out infinite;
+}
+.yokai-rig.particles-off .particle{display:none!important}
+@keyframes yokaiHeroFloat{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-5px)}
+}
+@keyframes yokaiCompactFloat{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-5px)}
+}
+@keyframes yokaiBlink{
+  0%,42%,45%,100%{transform:scaleY(1)}
+  43.1%,44.2%{transform:scaleY(.08)}
+}
+@keyframes spiritDrift{
+  0%,100%{opacity:.9;transform:translateY(0) scale(1)}
+  50%{opacity:.65;transform:translateY(-9px) scale(1.08)}
+}
+@keyframes sceneSpirit{
+  0%,100%{opacity:.95}
+  50%{opacity:.66}
+}
+@media (max-width:430px){
+  .character-scene{height:345px;margin-left:-12px;margin-right:-12px}
+}

@@ -1,4 +1,4 @@
-# Y-Chat v0.4.0 — Mood Skins UI
+# Y-Chat v0.5.0 — Scene + Character Rig
 
 Komplette Demo im Stil der gelieferten Y-Chat-Designvorlage.
 
@@ -47,3 +47,27 @@ Die Dateien aus diesem Ordner können den Inhalt deines bisherigen Repositories 
 
 Wenn Render bereits mit dem GitHub-Repository verbunden ist, genügt nach dem Commit/Push der normale
 Auto-Deploy.
+
+
+## v0.5.0 Rendering-Upgrade
+
+Die Darstellung wurde unterhalb der bestehenden API neu aufgebaut:
+
+- `Yokai.createScene(...)` rendert die komplette Profil-Szene als ein responsives SVG (`viewBox 0 0 400 520`)
+- Torii, Wald, Berge, Mond, Nebel, Ground-Glow und Spirit-Flames sind Teil derselben Szene
+- der Character-Core besitzt jetzt Füße, Arme, eine schlankere Flame-Silhouette und mehrere Glow-Layer
+- Skins bleiben reine Styling-/Extra-Layer
+- Moods ändern weiterhin nur Gesicht/Effekte und funktionieren auf jedem Skin
+- bestehende Shop-, LocalStorage-, Mood-Detection- und Socket.IO-Logik bleibt erhalten
+
+Damit bleibt die Logik:
+
+```txt
+State (skin + mood)
+        ↓
+     Yokai API
+        ↓
+ Character Rig + Skin + Mood
+        ↓
+      Scene
+```
