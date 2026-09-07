@@ -4,16 +4,16 @@
   const STORE = 'ychat_progress_v1';
   const unlockLevels = {standard:1, sakura:2, neon:4, kitsune:7, gold:10};
   const skinNames = {standard:'Standard', sakura:'Sakura', neon:'Neon', kitsune:'Kitsune', gold:'Gold'};
-  const skinAssets = {standard:'/assets/yokai-standard-v2.png', sakura:'/assets/yokai-sakura.png', neon:'/assets/yokai-neon.png', kitsune:'/assets/yokai-kitsune.png', gold:'/assets/yokai-gold.png'};
+  const skinAssets = {standard:'/assets/mygho-uniform-standard.png', sakura:'/assets/mygho-uniform-sakura.png', neon:'/assets/mygho-uniform-neon.png', kitsune:'/assets/mygho-uniform-kitsune.png', gold:'/assets/mygho-uniform-gold.png'};
   const shopSkins = [
-    {id:'cherry', name:'Cherry Blossom', price:250, col:0, row:0},
-    {id:'cyber', name:'Cyber', price:300, col:1, row:0},
-    {id:'angel', name:'Angel', price:350, col:2, row:0},
-    {id:'devil_skin', name:'Devil', price:400, col:3, row:0},
-    {id:'panda', name:'Panda', price:250, col:0, row:1},
-    {id:'neko', name:'Neko', price:300, col:1, row:1},
-    {id:'dragon', name:'Dragon', price:450, col:2, row:1},
-    {id:'galaxy', name:'Galaxy', price:450, col:3, row:1}
+    {id:'cherry', name:'Cherry Blossom', price:250, asset:'/assets/mygho-uniform-cherry.png'},
+    {id:'cyber', name:'Cyber', price:300, asset:'/assets/mygho-uniform-cyber.png'},
+    {id:'angel', name:'Angel', price:350, asset:'/assets/mygho-uniform-angel.png'},
+    {id:'devil_skin', name:'Devil', price:400, asset:'/assets/mygho-uniform-devil_skin.png'},
+    {id:'panda', name:'Panda', price:250, asset:'/assets/mygho-uniform-panda.png'},
+    {id:'neko', name:'Neko', price:300, asset:'/assets/mygho-uniform-neko.png'},
+    {id:'dragon', name:'Dragon', price:450, asset:'/assets/mygho-uniform-dragon.png'},
+    {id:'galaxy', name:'Galaxy', price:450, asset:'/assets/mygho-uniform-galaxy.png'}
   ];
   const reactions = [
     {id:'happy', label:'Freuen', shortcut:':-)', col:0, row:0, emoji:'😊'},
@@ -26,11 +26,13 @@
     {id:'sleepy', label:'Müde', shortcut:'-_-', col:1, row:2, emoji:'😴'},
     {id:'confused', label:'Verwirrt', shortcut:':-?', col:2, row:2, emoji:'🤔'}
   ];
-  const defaults = {xp:0, coins:0, messages:0, streak:0, lastActive:null, activeDate:null, todayMessages:0, skin:'standard', purchased:[], redeemedCodes:[]};
+  const defaults = {xp:0, coins:0, messages:0, streak:0, lastActive:null, activeDate:null, todayMessages:0, skin:'standard', purchased:[], redeemedCodes:[], rituals:{morning:null,aura:null,sleep:null}};
   let progress;
   try { progress = {...defaults, ...JSON.parse(localStorage.getItem(STORE) || '{}')}; }
   catch { progress = {...defaults}; }
-  let me = '', peer = '', peerOnline = false;
+  progress.rituals = {...defaults.rituals, ...(progress.rituals || {})};
+  const savedIdentity = JSON.parse(localStorage.getItem('mygho_identity_v1') || 'null');
+  let account = null, peer = '', peerOnline = false, contacts = [], presence = new Map();
   const timers = new Map();
 
   const dayKey = (date = new Date()) => {
@@ -79,7 +81,8 @@
     $('moodName').textContent = currentMood.toUpperCase();
     $('sidebarMood').textContent = currentMood.toUpperCase();
     $('moodCopy').textContent = moodText[currentMood];
-    const scene = document.createElement('div'); scene.className = `rendered-scene mood-${currentMood}`;
+    const sleeping = progress.rituals.sleep === dayKey();
+    const scene = document.createElement('div'); scene.className = `rendered-scene mood-${currentMood} ${sleeping ? 'ritual-sleeping' : ''}`;
     const background = document.createElement('img'); background.className = 'rendered-background'; background.src = '/assets/reference-scene-clean.jpg'; background.alt = '';
     const premium = shopSkins.find(item => item.id === progress.skin);
     const character = premium ? makeShopSprite(premium, 'rendered-character premium-character') : document.createElement('img');
@@ -89,8 +92,11 @@
     if (currentMood === 'sleepy') { const fx = document.createElement('span'); fx.className = 'mood-fx'; fx.textContent = 'Zz'; scene.appendChild(fx); }
     if (currentMood === 'sad') { const fx = document.createElement('span'); fx.className = 'mood-fx'; fx.textContent = '·'; scene.appendChild(fx); }
     $('yokaiHero').replaceChildren(scene);
-    document.querySelectorAll('.yokai-thumb').forEach(img => img.src = premium ? '/assets/yokai-standard-v2.png' : skinAssets[progress.skin]);
+    document.querySelectorAll('.yokai-thumb').forEach(img => img.src = premium ? premium.asset : skinAssets[progress.skin]);
     document.querySelectorAll('.rule-grid article').forEach((el, index) => el.classList.toggle('active', ['happy','sleepy','sad'][index] === currentMood));
+    $('morningRitual').disabled = progress.rituals.morning === dayKey();
+    $('auraRitual').disabled = progress.rituals.aura === dayKey();
+    $('sleepRitual').disabled = sleeping;
     renderSkins();
   }
 
@@ -120,8 +126,7 @@
   }
 
   function makeShopSprite(item, className) {
-    const sprite = document.createElement('span'); sprite.className = className;
-    sprite.style.setProperty('--shop-x', `${item.col / 3 * 100}%`); sprite.style.setProperty('--shop-y', `${item.row * 100}%`); return sprite;
+    const image = document.createElement('img'); image.className = className; image.src = item.asset; image.alt = item.name; return image;
   }
 
   function renderShop() {
@@ -153,31 +158,61 @@
     save(); renderYokai();
   }
 
-  function updatePeer(online) {
-    peerOnline = online;
-    $('peerName').textContent = peer || 'Noch kein Kontakt';
-    $('conversationName').textContent = peer || 'Wähle einen Kontakt';
-    $('peerState').textContent = peer ? (online ? 'Jetzt online' : 'Gerade offline') : 'ID eingeben und prüfen';
-    $('conversationState').textContent = peer ? (online ? 'Online · Nachrichten live' : 'Offline · keine Zustellung') : 'Nicht verbunden';
-    $('peerDot').classList.toggle('on', online); $('headDot').classList.toggle('on', online);
-    $('messageInput').disabled = !(me && peer && online); $('sendButton').disabled = !(me && peer && online); $('emojiTrigger').disabled = !(me && peer && online);
-    if (me && peer) $('emptyChat').classList.add('hidden');
+  const formatId = id => String(id).replace(/(\d{3})(?=\d)/g, '$1 ');
+  const contactStore = () => `mygho_contacts_${account?.id || 'guest'}`;
+  function loadContacts() { try { contacts = JSON.parse(localStorage.getItem(contactStore()) || '[]'); } catch { contacts = []; } }
+  function saveContacts() { localStorage.setItem(contactStore(), JSON.stringify(contacts)); }
+  function addContact(contact, online = false) {
+    const existing = contacts.find(item => item.id === contact.id);
+    if (existing) Object.assign(existing, contact); else contacts.push(contact);
+    presence.set(contact.id, {online, name:online ? contact.name : null}); saveContacts(); renderContacts();
   }
-
+  function renderContacts() {
+    const host = $('contactsList'); host.innerHTML = '';
+    if (!contacts.length) { const empty = document.createElement('p'); empty.className = 'contacts-empty'; empty.textContent = 'Noch keine Kontakte.'; host.appendChild(empty); return; }
+    contacts.forEach(contact => {
+      const state = presence.get(contact.id) || {online:false,name:null};
+      const button = document.createElement('button'); button.type = 'button'; button.className = `contact-card ${state.online ? 'online' : 'offline'} ${peer === contact.id ? 'active' : ''}`;
+      button.innerHTML = `<span class="avatar">${state.online ? contact.name.slice(0,1).toUpperCase() : '◌'}</span><span><strong>${state.online ? contact.name : 'Schlafender Gho'}</strong><small>${state.online ? 'Jetzt da' : `•••• ${contact.id.slice(-4)}`}</small></span><i class="presence-dot ${state.online ? 'on' : ''}"></i>`;
+      button.addEventListener('click', () => selectContact(contact.id)); host.appendChild(button);
+    });
+  }
+  function selectContact(id) {
+    peer = id; const contact = contacts.find(item => item.id === id), state = presence.get(id) || {online:false,name:null}; peerOnline = state.online;
+    $('conversationName').textContent = state.online ? contact.name : `Schlafender Gho · ${id.slice(-4)}`;
+    $('conversationState').textContent = state.online ? 'Online · Nachrichten live' : 'Offline · Name verborgen';
+    $('headDot').classList.toggle('on', state.online);
+    const enabled = Boolean(account && peer && state.online); $('messageInput').disabled = !enabled; $('sendButton').disabled = !enabled; $('emojiTrigger').disabled = !enabled;
+    $('emptyChat').classList.toggle('hidden', Boolean(peer)); renderContacts();
+  }
+  function checkAllPresence() {
+    contacts.forEach(contact => socket.emit('presence:check', {id:contact.id}, result => { presence.set(contact.id,{online:result.online,name:result.name}); renderContacts(); if (peer === contact.id) selectContact(contact.id); }));
+  }
+  function activateIdentity(result) {
+    account = result.account; localStorage.setItem('mygho_identity_v1', JSON.stringify({name:account.name,token:result.token,id:account.id}));
+    $('identityLabel').textContent = account.name; $('ownId').textContent = formatId(account.id); $('ownId').hidden = false; $('shareId').hidden = false; $('identityOrb').classList.add('on');
+    $('identityForm').hidden = true; loadContacts(); renderContacts(); checkAllPresence();
+  }
   $('identityForm').addEventListener('submit', e => {
-    e.preventDefault(); const id = $('myId').value.trim(); if (!id) return;
-    socket.emit('register', {id}, result => {
-      if (!result?.ok) return toast('ID konnte nicht aktiviert werden');
-      me = result.id; $('identityLabel').textContent = `Online als ${me}`; $('identityOrb').classList.add('on');
-      $('myId').disabled = true; e.currentTarget.querySelector('button').disabled = true; updatePeer(peerOnline);
+    e.preventDefault(); const name = $('myId').value.trim(); if (!name) return;
+    socket.emit('account:register', {name}, result => {
+      if (!result?.ok) return toast(result?.reason === 'name_taken' ? 'Dieser Name ist bereits vergeben' : 'Bitte 2–24 gültige Zeichen verwenden'); activateIdentity(result);
     });
   });
   $('peerForm').addEventListener('submit', e => {
-    e.preventDefault(); peer = $('peerId').value.trim(); if (!peer) return;
-    socket.emit('presence:check', {id:peer}, ({online}) => updatePeer(online));
+    e.preventDefault(); const query = $('peerId').value.trim(); if (!query || !account) return toast('Registriere dich zuerst');
+    socket.emit('contact:lookup', {query}, result => {
+      if (!result?.ok) return toast('Kein passender Name oder keine ID gefunden');
+      addContact(result.contact, result.online); $('peerId').value = ''; selectContact(result.contact.id); toast(`${result.contact.name} hinzugefügt`);
+    });
   });
-  $('newChat').addEventListener('click', () => { $('peerId').value = ''; $('peerId').focus(); });
-  socket.on('presence:update', ({id, online}) => { if (id === peer) updatePeer(online); });
+  $('shareId').addEventListener('click', async () => { try { await navigator.clipboard.writeText(account.id); toast('MyGho-ID kopiert'); } catch { toast(formatId(account.id)); } });
+  $('newChat').addEventListener('click', () => $('peerId').focus());
+  socket.on('presence:update', ({id, online, name}) => {
+    if (!contacts.some(contact => contact.id === id)) return;
+    presence.set(id,{online,name}); renderContacts(); if (peer === id) selectContact(id);
+  });
+  if (savedIdentity?.token) socket.emit('account:register', {token:savedIdentity.token}, result => { if (result?.ok) activateIdentity(result); else localStorage.removeItem('mygho_identity_v1'); });
 
   function addMessage(data, mine) {
     $('emptyChat').classList.add('hidden');
@@ -200,7 +235,7 @@
     tick(); timers.set(clientId, setInterval(tick, 250));
   }
   $('messageForm').addEventListener('submit', e => {
-    e.preventDefault(); let text = $('messageInput').value.trim(); if (!text || !me || !peerOnline) return;
+    e.preventDefault(); let text = $('messageInput').value.trim(); if (!text || !account || !peerOnline) return;
     const exact = reactions.find(item => item.shortcut === text);
     if (exact) text = `[[yokai:${exact.id}]]`;
     else reactions.forEach(item => { text = text.split(item.shortcut).join(item.emoji); });
@@ -208,9 +243,12 @@
     $('emojiPicker').hidden = true; $('emojiTrigger').setAttribute('aria-expanded','false');
   });
   socket.on('message:sent', data => { addMessage(data, true); recordSentMessage(); });
-  socket.on('message:incoming', data => { if (!peer) { peer = data.from; $('peerId').value = peer; updatePeer(true); } if (data.from === peer) addMessage(data, false); });
+  socket.on('message:incoming', data => {
+    if (!contacts.some(contact => contact.id === data.from)) addContact({id:data.from,name:data.fromName,suffix:data.from.slice(-4)}, true);
+    presence.set(data.from,{online:true,name:data.fromName}); if (!peer) selectContact(data.from); if (data.from === peer) addMessage(data, false);
+  });
   socket.on('message:read', ({clientId, readAt}) => startTimer(clientId, readAt));
-  socket.on('message:error', () => { updatePeer(false); toast('Kontakt ist offline. Nichts wurde gespeichert.'); });
+  socket.on('message:error', () => { if (peer) { presence.set(peer,{online:false,name:null}); selectContact(peer); } toast('Kontakt ist offline. Nichts wurde gespeichert.'); });
 
   reactions.forEach(item => {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'emoji-option'; button.title = `${item.label} · ${item.shortcut}`;
@@ -231,5 +269,15 @@
     if (progress.redeemedCodes.includes(code)) return toast('Code wurde bereits eingelöst');
     progress.redeemedCodes.push(code); progress.coins += 1000; save(); $('codeInput').value = ''; renderYokai(); renderShop(); toast('+1.000 MyGho-Coins');
   });
+  function completeRitual(type, message, reward = 2) {
+    if (progress.rituals[type] === dayKey()) return;
+    progress.rituals[type] = dayKey(); progress.xp += reward; save(); renderYokai(); toast(`${message} · +${reward} XP`);
+  }
+  $('morningRitual').addEventListener('click', () => completeRitual('morning','Dein Gho ist wach'));
+  $('auraRitual').addEventListener('click', () => {
+    completeRitual('aura','Die Aura antwortet',1);
+    $('yokaiHero').animate([{filter:'brightness(1)'},{filter:'brightness(1.45)'},{filter:'brightness(1)'}],{duration:650,easing:'ease-out'});
+  });
+  $('sleepRitual').addEventListener('click', () => completeRitual('sleep','Gute Nacht, kleiner Gho'));
   renderYokai(); route(location.hash === '#yokai' ? 'yokai' : 'chat');
 })();

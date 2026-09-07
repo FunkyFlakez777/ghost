@@ -4,15 +4,16 @@
 <header class="brandbar"><button class="brand" data-route="chat">MyGho</button><p>SAME DARK. A LITTLE MORE LIFE.</p><span>小さな感情。大きなつながり。</span></header>
 <section class="screen active" id="screen-chat">
 <aside class="sidebar">
-<div class="sidebar-head"><div><small>DEINE IDENTITÄT</small><strong id="identityLabel">Noch offline</strong></div><span class="status-orb" id="identityOrb"></span></div>
-<form class="identity-form" id="identityForm"><input id="myId" maxlength="32" placeholder="Deine MyGho-ID" autocomplete="username"><button>Online</button></form>
-<div class="section-label"><span>CHAT</span><button id="newChat" type="button">＋</button></div>
-<form class="peer-form" id="peerForm"><input id="peerId" maxlength="32" placeholder="ID eines Kontakts"><button>Öffnen</button></form>
-<button class="contact-card" id="activeContact" type="button"><span class="avatar">?</span><span><strong id="peerName">Noch kein Kontakt</strong><small id="peerState">ID eingeben und prüfen</small></span><i class="presence-dot" id="peerDot"></i></button>
-<button class="yokai-entry" data-route="yokai" type="button"><img class="yokai-thumb" src="/assets/yokai-standard-v2.png" alt=""><span><small>DEIN BEGLEITER</small><strong>DEIN GHO // KAGE</strong><em id="sidebarMood">HAPPY</em></span><b>›</b></button>
+<div class="sidebar-head"><div><small>DEINE IDENTITÄT</small><strong id="identityLabel">Noch offline</strong><span class="own-id" id="ownId" hidden></span></div><span class="status-orb" id="identityOrb"></span></div>
+<form class="identity-form" id="identityForm"><input id="myId" maxlength="24" placeholder="Dein einzigartiger Name" autocomplete="username"><button>Registrieren</button></form>
+<button class="share-id" id="shareId" type="button" hidden>⌁ ID kopieren</button>
+<div class="section-label"><span>DEINE KONTAKTE</span><button id="newChat" type="button">＋</button></div>
+<form class="peer-form" id="peerForm"><input id="peerId" maxlength="32" placeholder="Name oder volle MyGho-ID"><button>Hinzufügen</button></form>
+<div class="contacts-list" id="contactsList"><p class="contacts-empty">Noch keine Kontakte.</p></div>
+<button class="yokai-entry" data-route="yokai" type="button"><img class="yokai-thumb" src="/assets/mygho-uniform-standard.png" alt=""><span><small>DEIN BEGLEITER</small><strong>DEIN GHO // KAGE</strong><em id="sidebarMood">HAPPY</em></span><b>›</b></button>
 </aside>
 <main class="conversation">
-<header class="conversation-head"><div><span class="mobile-label">MyGho</span><strong id="conversationName">Wähle einen Kontakt</strong><small><i class="presence-dot" id="headDot"></i><span id="conversationState">Nicht verbunden</span></small></div><div class="head-actions"><span class="vanish-note">Nach dem Lesen · 60s</span><button data-route="yokai"><img class="yokai-thumb" src="/assets/yokai-standard-v2.png" alt="Gho öffnen"></button></div></header>
+<header class="conversation-head"><div><span class="mobile-label">MyGho</span><strong id="conversationName">Wähle einen Kontakt</strong><small><i class="presence-dot" id="headDot"></i><span id="conversationState">Nicht verbunden</span></small></div><div class="head-actions"><span class="vanish-note">Nach dem Lesen · 60s</span><button data-route="yokai"><img class="yokai-thumb" src="/assets/mygho-uniform-standard.png" alt="Gho öffnen"></button></div></header>
 <div class="empty-chat" id="emptyChat"><span class="ghost-mark">◌</span><h1>Nur jetzt zählt.</h1><p>MyGho speichert keinen Verlauf. Beide müssen gleichzeitig online sein.</p></div><div class="messages" id="messages" aria-live="polite"></div>
 <form class="composer" id="messageForm">
   <button class="emoji-trigger" id="emojiTrigger" type="button" disabled aria-label="Gho Smileys öffnen" aria-expanded="false">☻</button>
@@ -25,7 +26,7 @@
 </form><p class="security-note">PROTOTYP · NOCH KEINE ENDE-ZU-ENDE-VERSCHLÜSSELUNG</p>
 </main></section>
 <section class="screen yokai-screen" id="screen-yokai">
-<div class="yokai-profile"><div class="profile-top"><div><small>DEIN GHO</small><h1>KAGE</h1></div><button data-route="chat">← Chat</button></div><div class="level-row"><span>LEVEL <strong id="levelValue">1</strong></span><span><b id="xpValue">0</b>/100 XP</span></div><div class="xp-track"><i id="xpBar"></i></div><div class="hero" id="yokaiHero"></div><div class="mood-card"><span>MOOD</span><strong id="moodName">HAPPY</strong><p id="moodCopy">Du bist regelmäßig da. Dein Gho freut sich.</p></div><div class="quick-stats"><div><strong id="coinValue">0</strong><span>MYGHO-COINS</span></div><div><strong id="messageCount">0</strong><span>NACHRICHTEN</span></div><div><strong id="streakValue">0</strong><span>TAGE STREAK</span></div></div></div>
+<div class="yokai-profile"><div class="profile-top"><div><small>DEIN GHO</small><h1>KAGE</h1></div><button data-route="chat">← Chat</button></div><div class="level-row"><span>LEVEL <strong id="levelValue">1</strong></span><span><b id="xpValue">0</b>/100 XP</span></div><div class="xp-track"><i id="xpBar"></i></div><div class="hero" id="yokaiHero"></div><div class="ritual-actions"><button id="morningRitual" type="button"><span>☀</span>Begrüßen</button><button id="auraRitual" type="button"><span>✦</span>Aura</button><button id="sleepRitual" type="button"><span>☾</span>Schlafen</button></div><div class="mood-card"><span>MOOD</span><strong id="moodName">HAPPY</strong><p id="moodCopy">Du bist regelmäßig da. Dein Gho freut sich.</p></div><div class="quick-stats"><div><strong id="coinValue">0</strong><span>MYGHO-COINS</span></div><div><strong id="messageCount">0</strong><span>NACHRICHTEN</span></div><div><strong id="streakValue">0</strong><span>TAGE STREAK</span></div></div></div>
 <main class="collection"><div class="collection-head"><div><small>DEINE SAMMLUNG</small><h2>Skins</h2><p>Chatte, sammle XP und schalte neue Formen für dein Gho frei.</p></div><button class="shop-button" id="shopButton">✦ Skin-Shop</button></div><div class="skin-grid" id="skinGrid"></div>
 <section class="mood-rules"><div class="rules-head"><small>KAGE REAGIERT AUF DEINEN RHYTHMUS</small><h2>Drei Stimmungen. Keine Inhaltsanalyse.</h2></div><div class="rule-grid"><article class="active"><span>☻</span><div><strong>HAPPY</strong><p>1–39 Nachrichten heute</p></div></article><article><span>☾</span><div><strong>SLEEPY</strong><p>Ab 40 Nachrichten heute</p></div></article><article><span>☂</span><div><strong>SAD</strong><p>Seit zwei Tagen nicht aktiv</p></div></article></div></section></main>
 </section></div>
