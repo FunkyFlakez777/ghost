@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: y-chat-yokai-demo
+    name: mygho-chat
     runtime: node
     plan: free
     buildCommand: npm install

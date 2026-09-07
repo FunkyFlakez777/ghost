@@ -5,18 +5,28 @@
   const unlockLevels = {standard:1, sakura:2, neon:4, kitsune:7, gold:10};
   const skinNames = {standard:'Standard', sakura:'Sakura', neon:'Neon', kitsune:'Kitsune', gold:'Gold'};
   const skinAssets = {standard:'/assets/yokai-standard-v2.png', sakura:'/assets/yokai-sakura.png', neon:'/assets/yokai-neon.png', kitsune:'/assets/yokai-kitsune.png', gold:'/assets/yokai-gold.png'};
-  const reactions = [
-    {id:'happy', label:'Freuen', shortcut:':-)', col:1, row:0, emoji:'😊'},
-    {id:'laugh', label:'Lachen', shortcut:':D', col:2, row:0, emoji:'😄'},
-    {id:'wink', label:'Zwinkern', shortcut:';-)', col:6, row:0, emoji:'😉'},
-    {id:'sad', label:'Traurig', shortcut:':-(', col:6, row:2, emoji:'😢'},
-    {id:'angry', label:'Wütend', shortcut:'>:(', col:9, row:3, emoji:'😠'},
-    {id:'devil', label:'Devil', shortcut:'}:)', col:4, row:2, emoji:'😈'},
-    {id:'love', label:'Verliebt', shortcut:'<3', col:0, row:4, emoji:'😍'},
-    {id:'sleepy', label:'Müde', shortcut:'-_-', col:9, row:0, emoji:'😴'},
-    {id:'confused', label:'Verwirrt', shortcut:':-?', col:8, row:0, emoji:'🤔'}
+  const shopSkins = [
+    {id:'cherry', name:'Cherry Blossom', price:250, col:0, row:0},
+    {id:'cyber', name:'Cyber', price:300, col:1, row:0},
+    {id:'angel', name:'Angel', price:350, col:2, row:0},
+    {id:'devil_skin', name:'Devil', price:400, col:3, row:0},
+    {id:'panda', name:'Panda', price:250, col:0, row:1},
+    {id:'neko', name:'Neko', price:300, col:1, row:1},
+    {id:'dragon', name:'Dragon', price:450, col:2, row:1},
+    {id:'galaxy', name:'Galaxy', price:450, col:3, row:1}
   ];
-  const defaults = {xp:0, coins:0, messages:0, streak:0, lastActive:null, activeDate:null, todayMessages:0, skin:'standard'};
+  const reactions = [
+    {id:'happy', label:'Freuen', shortcut:':-)', col:0, row:0, emoji:'😊'},
+    {id:'laugh', label:'Lachen', shortcut:':D', col:1, row:0, emoji:'😄'},
+    {id:'wink', label:'Zwinkern', shortcut:';-)', col:2, row:0, emoji:'😉'},
+    {id:'sad', label:'Traurig', shortcut:':-(', col:0, row:1, emoji:'😢'},
+    {id:'angry', label:'Wütend', shortcut:'>:(', col:1, row:1, emoji:'😠'},
+    {id:'devil', label:'Devil', shortcut:'}:)', col:2, row:1, emoji:'😈'},
+    {id:'love', label:'Verliebt', shortcut:'<3', col:0, row:2, emoji:'😍'},
+    {id:'sleepy', label:'Müde', shortcut:'-_-', col:1, row:2, emoji:'😴'},
+    {id:'confused', label:'Verwirrt', shortcut:':-?', col:2, row:2, emoji:'🤔'}
+  ];
+  const defaults = {xp:0, coins:0, messages:0, streak:0, lastActive:null, activeDate:null, todayMessages:0, skin:'standard', purchased:[], redeemedCodes:[]};
   let progress;
   try { progress = {...defaults, ...JSON.parse(localStorage.getItem(STORE) || '{}')}; }
   catch { progress = {...defaults}; }
@@ -43,9 +53,9 @@
     return 'happy';
   }
   const moodText = {
-    happy:'Du bist regelmäßig da. Kage freut sich.',
-    sleepy:'Das war viel für heute. Kage braucht eine Pause.',
-    sad:'Es war lange still. Kage hat dich vermisst.'
+    happy:'Du bist regelmäßig da. Dein Gho freut sich.',
+    sleepy:'Das war viel für heute. Dein Gho braucht eine Pause.',
+    sad:'Es war lange still. Dein Gho hat dich vermisst.'
   };
   function toast(text) { const el = $('toast'); el.textContent = text; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 1800); }
 
@@ -71,12 +81,15 @@
     $('moodCopy').textContent = moodText[currentMood];
     const scene = document.createElement('div'); scene.className = `rendered-scene mood-${currentMood}`;
     const background = document.createElement('img'); background.className = 'rendered-background'; background.src = '/assets/reference-scene-clean.jpg'; background.alt = '';
-    const character = document.createElement('img'); character.className = 'rendered-character'; character.src = skinAssets[progress.skin]; character.alt = `${skinNames[progress.skin]} Yōkai, ${currentMood}`;
+    const premium = shopSkins.find(item => item.id === progress.skin);
+    const character = premium ? makeShopSprite(premium, 'rendered-character premium-character') : document.createElement('img');
+    if (!premium) { character.className = 'rendered-character'; character.src = skinAssets[progress.skin]; }
+    character.setAttribute('role','img'); character.setAttribute('aria-label', `${premium?.name || skinNames[progress.skin]} Gho, ${currentMood}`);
     scene.append(background, character);
     if (currentMood === 'sleepy') { const fx = document.createElement('span'); fx.className = 'mood-fx'; fx.textContent = 'Zz'; scene.appendChild(fx); }
     if (currentMood === 'sad') { const fx = document.createElement('span'); fx.className = 'mood-fx'; fx.textContent = '·'; scene.appendChild(fx); }
     $('yokaiHero').replaceChildren(scene);
-    document.querySelectorAll('.yokai-thumb').forEach(img => img.src = skinAssets[progress.skin]);
+    document.querySelectorAll('.yokai-thumb').forEach(img => img.src = premium ? '/assets/yokai-standard-v2.png' : skinAssets[progress.skin]);
     document.querySelectorAll('.rule-grid article').forEach((el, index) => el.classList.toggle('active', ['happy','sleepy','sad'][index] === currentMood));
     renderSkins();
   }
@@ -96,6 +109,34 @@
       if (!available) { const lock = document.createElement('span'); lock.className = 'lock-tag'; lock.textContent = `LVL ${required}`; card.appendChild(lock); }
       if (available) card.addEventListener('click', () => { progress.skin = id; save(); renderYokai(); toast(`${skinNames[id]} ausgerüstet`); });
       host.appendChild(card);
+    });
+    shopSkins.filter(item => progress.purchased.includes(item.id)).forEach(item => {
+      const card = document.createElement('button'); card.className = `skin-card ${progress.skin === item.id ? 'active' : ''}`; card.type = 'button';
+      const preview = document.createElement('div'); preview.className = 'skin-card-preview'; preview.appendChild(makeShopSprite(item, 'shop-sprite owned-sprite'));
+      const title = document.createElement('h3'); title.textContent = item.name;
+      const caption = document.createElement('p'); caption.textContent = progress.skin === item.id ? 'AKTIV' : 'GEKAUFT'; card.append(preview,title,caption);
+      card.addEventListener('click', () => { progress.skin = item.id; save(); renderYokai(); toast(`${item.name} ausgerüstet`); }); host.appendChild(card);
+    });
+  }
+
+  function makeShopSprite(item, className) {
+    const sprite = document.createElement('span'); sprite.className = className;
+    sprite.style.setProperty('--shop-x', `${item.col / 3 * 100}%`); sprite.style.setProperty('--shop-y', `${item.row * 100}%`); return sprite;
+  }
+
+  function renderShop() {
+    const host = $('shopCatalog'); host.innerHTML = ''; $('dialogCoins').textContent = progress.coins;
+    shopSkins.forEach(item => {
+      const owned = progress.purchased.includes(item.id), card = document.createElement('article'); card.className = 'shop-item';
+      const art = document.createElement('div'); art.className = 'shop-item-art'; art.appendChild(makeShopSprite(item, 'shop-sprite'));
+      const info = document.createElement('div'); info.innerHTML = `<strong>${item.name}</strong><span>${owned ? 'GEKAUFT' : `${item.price} MC`}</span>`;
+      const button = document.createElement('button'); button.type = 'button'; button.textContent = owned ? (progress.skin === item.id ? 'Aktiv' : 'Ausrüsten') : 'Kaufen'; button.disabled = owned && progress.skin === item.id;
+      button.addEventListener('click', () => {
+        if (owned) { progress.skin = item.id; save(); renderYokai(); renderShop(); return toast(`${item.name} ausgerüstet`); }
+        if (progress.coins < item.price) return toast('Nicht genug MyGho-Coins');
+        progress.coins -= item.price; progress.purchased.push(item.id); progress.skin = item.id; save(); renderYokai(); renderShop(); toast(`${item.name} gekauft`);
+      });
+      card.append(art,info,button); host.appendChild(card);
     });
   }
 
@@ -146,7 +187,7 @@
     const reaction = stickerMatch && reactions.find(item => item.id === stickerMatch[1]);
     if (reaction) {
       bubble.classList.add('sticker-bubble');
-      const sticker = document.createElement('span'); sticker.className = 'yokai-sticker'; sticker.setAttribute('role','img'); sticker.setAttribute('aria-label', reaction.label); sticker.style.setProperty('--sprite-x', `${reaction.col / 9 * 100}%`); sticker.style.setProperty('--sprite-y', `${reaction.row / 4 * 100}%`); bubble.appendChild(sticker);
+      const sticker = document.createElement('span'); sticker.className = 'yokai-sticker'; sticker.setAttribute('role','img'); sticker.setAttribute('aria-label', reaction.label); sticker.style.setProperty('--sprite-x', `${reaction.col / 2 * 100}%`); sticker.style.setProperty('--sprite-y', `${reaction.row / 2 * 100}%`); bubble.appendChild(sticker);
     } else bubble.textContent = data.text;
     const meta = document.createElement('div'); meta.className = 'message-meta'; meta.innerHTML = `<span>${mine ? 'GESENDET' : 'GELESEN'}</span> · <span class="timer">${mine ? 'WARTET' : '60s'}</span>`;
     item.append(bubble, meta); $('messages').appendChild(item); $('messages').scrollTop = $('messages').scrollHeight;
@@ -173,7 +214,7 @@
 
   reactions.forEach(item => {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'emoji-option'; button.title = `${item.label} · ${item.shortcut}`;
-    const sprite = document.createElement('span'); sprite.className = 'emoji-sprite'; sprite.style.setProperty('--sprite-x', `${item.col / 9 * 100}%`); sprite.style.setProperty('--sprite-y', `${item.row / 4 * 100}%`);
+    const sprite = document.createElement('span'); sprite.className = 'emoji-sprite'; sprite.style.setProperty('--sprite-x', `${item.col / 2 * 100}%`); sprite.style.setProperty('--sprite-y', `${item.row / 2 * 100}%`);
     const label = document.createElement('small'); label.textContent = item.label; button.append(sprite, label);
     button.addEventListener('click', () => { $('messageInput').value = item.shortcut; $('messageInput').focus(); $('emojiPicker').hidden = true; $('emojiTrigger').setAttribute('aria-expanded','false'); });
     $('emojiGrid').appendChild(button);
@@ -181,8 +222,14 @@
   $('emojiTrigger').addEventListener('click', () => { const opening = $('emojiPicker').hidden; $('emojiPicker').hidden = !opening; $('emojiTrigger').setAttribute('aria-expanded', String(opening)); });
   document.addEventListener('click', e => { if (!e.target.closest('.composer')) { $('emojiPicker').hidden = true; $('emojiTrigger').setAttribute('aria-expanded','false'); } });
 
-  $('shopButton').addEventListener('click', () => $('shopDialog').showModal());
+  $('shopButton').addEventListener('click', () => { renderShop(); $('shopDialog').showModal(); });
   $('closeShop').addEventListener('click', () => $('shopDialog').close());
   $('shopDialog').addEventListener('click', e => { if (e.target === $('shopDialog')) $('shopDialog').close(); });
+  $('codeForm').addEventListener('submit', e => {
+    e.preventDefault(); const code = $('codeInput').value.trim().toLowerCase();
+    if (code !== 'dan1000xl') return toast('Code nicht erkannt');
+    if (progress.redeemedCodes.includes(code)) return toast('Code wurde bereits eingelöst');
+    progress.redeemedCodes.push(code); progress.coins += 1000; save(); $('codeInput').value = ''; renderYokai(); renderShop(); toast('+1.000 MyGho-Coins');
+  });
   renderYokai(); route(location.hash === '#yokai' ? 'yokai' : 'chat');
 })();

@@ -1,23 +1,23 @@
 <!doctype html>
-<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#03080d"><meta name="description" content="Y-Chat – flüchtige Chats und dein persönlicher Yōkai."><title>Y-Chat</title><link rel="stylesheet" href="/css/app.css"></head>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#03080d"><meta name="description" content="MyGho – flüchtige Chats und dein persönlicher Gho."><title>MyGho</title><link rel="stylesheet" href="/css/app.css"></head>
 <body><div class="app-shell">
-<header class="brandbar"><button class="brand" data-route="chat">Y-CHAT</button><p>SAME DARK. A LITTLE MORE LIFE.</p><span>小さな感情。大きなつながり。</span></header>
+<header class="brandbar"><button class="brand" data-route="chat">MyGho</button><p>SAME DARK. A LITTLE MORE LIFE.</p><span>小さな感情。大きなつながり。</span></header>
 <section class="screen active" id="screen-chat">
 <aside class="sidebar">
 <div class="sidebar-head"><div><small>DEINE IDENTITÄT</small><strong id="identityLabel">Noch offline</strong></div><span class="status-orb" id="identityOrb"></span></div>
-<form class="identity-form" id="identityForm"><input id="myId" maxlength="32" placeholder="Deine Y-Chat-ID" autocomplete="username"><button>Online</button></form>
+<form class="identity-form" id="identityForm"><input id="myId" maxlength="32" placeholder="Deine MyGho-ID" autocomplete="username"><button>Online</button></form>
 <div class="section-label"><span>CHAT</span><button id="newChat" type="button">＋</button></div>
 <form class="peer-form" id="peerForm"><input id="peerId" maxlength="32" placeholder="ID eines Kontakts"><button>Öffnen</button></form>
 <button class="contact-card" id="activeContact" type="button"><span class="avatar">?</span><span><strong id="peerName">Noch kein Kontakt</strong><small id="peerState">ID eingeben und prüfen</small></span><i class="presence-dot" id="peerDot"></i></button>
-<button class="yokai-entry" data-route="yokai" type="button"><img class="yokai-thumb" src="/assets/yokai-standard-v2.png" alt=""><span><small>DEIN BEGLEITER</small><strong>YŌKAI // KAGE</strong><em id="sidebarMood">HAPPY</em></span><b>›</b></button>
+<button class="yokai-entry" data-route="yokai" type="button"><img class="yokai-thumb" src="/assets/yokai-standard-v2.png" alt=""><span><small>DEIN BEGLEITER</small><strong>DEIN GHO // KAGE</strong><em id="sidebarMood">HAPPY</em></span><b>›</b></button>
 </aside>
 <main class="conversation">
-<header class="conversation-head"><div><span class="mobile-label">Y-CHAT</span><strong id="conversationName">Wähle einen Kontakt</strong><small><i class="presence-dot" id="headDot"></i><span id="conversationState">Nicht verbunden</span></small></div><div class="head-actions"><span class="vanish-note">Nach dem Lesen · 60s</span><button data-route="yokai"><img class="yokai-thumb" src="/assets/yokai-standard-v2.png" alt="Yōkai öffnen"></button></div></header>
-<div class="empty-chat" id="emptyChat"><span class="ghost-mark">◌</span><h1>Nur jetzt zählt.</h1><p>Y-Chat speichert keinen Verlauf. Beide müssen gleichzeitig online sein.</p></div><div class="messages" id="messages" aria-live="polite"></div>
+<header class="conversation-head"><div><span class="mobile-label">MyGho</span><strong id="conversationName">Wähle einen Kontakt</strong><small><i class="presence-dot" id="headDot"></i><span id="conversationState">Nicht verbunden</span></small></div><div class="head-actions"><span class="vanish-note">Nach dem Lesen · 60s</span><button data-route="yokai"><img class="yokai-thumb" src="/assets/yokai-standard-v2.png" alt="Gho öffnen"></button></div></header>
+<div class="empty-chat" id="emptyChat"><span class="ghost-mark">◌</span><h1>Nur jetzt zählt.</h1><p>MyGho speichert keinen Verlauf. Beide müssen gleichzeitig online sein.</p></div><div class="messages" id="messages" aria-live="polite"></div>
 <form class="composer" id="messageForm">
-  <button class="emoji-trigger" id="emojiTrigger" type="button" disabled aria-label="Yōkai Smileys öffnen" aria-expanded="false">☻</button>
+  <button class="emoji-trigger" id="emojiTrigger" type="button" disabled aria-label="Gho Smileys öffnen" aria-expanded="false">☻</button>
   <div class="emoji-picker" id="emojiPicker" hidden>
-    <div class="emoji-picker-head"><strong>YŌKAI SMILEYS</strong><span>SHORTCUTS FUNKTIONIEREN AUCH</span></div>
+    <div class="emoji-picker-head"><strong>GHO SMILEYS</strong><span>SHORTCUTS FUNKTIONIEREN AUCH</span></div>
     <div class="emoji-grid" id="emojiGrid"></div>
     <div class="shortcut-hint"><span><b>;-)</b> Zwinker</span><span><b>:-)</b> Freuen</span><span><b>:D</b> Lachen</span><span><b>:-(</b> Traurig</span></div>
   </div>
@@ -25,9 +25,9 @@
 </form><p class="security-note">PROTOTYP · NOCH KEINE ENDE-ZU-ENDE-VERSCHLÜSSELUNG</p>
 </main></section>
 <section class="screen yokai-screen" id="screen-yokai">
-<div class="yokai-profile"><div class="profile-top"><div><small>DEIN YŌKAI</small><h1>KAGE</h1></div><button data-route="chat">← Chat</button></div><div class="level-row"><span>LEVEL <strong id="levelValue">1</strong></span><span><b id="xpValue">0</b>/100 XP</span></div><div class="xp-track"><i id="xpBar"></i></div><div class="hero" id="yokaiHero"></div><div class="mood-card"><span>MOOD</span><strong id="moodName">HAPPY</strong><p id="moodCopy">Du bist regelmäßig da. Kage freut sich.</p></div><div class="quick-stats"><div><strong id="coinValue">0</strong><span>YŌKAI COINS</span></div><div><strong id="messageCount">0</strong><span>NACHRICHTEN</span></div><div><strong id="streakValue">0</strong><span>TAGE STREAK</span></div></div></div>
-<main class="collection"><div class="collection-head"><div><small>DEINE SAMMLUNG</small><h2>Skins</h2><p>Chatte, sammle XP und schalte neue Formen für Kage frei.</p></div><button class="shop-button" id="shopButton">✦ Skin-Shop <span>Später</span></button></div><div class="skin-grid" id="skinGrid"></div>
+<div class="yokai-profile"><div class="profile-top"><div><small>DEIN GHO</small><h1>KAGE</h1></div><button data-route="chat">← Chat</button></div><div class="level-row"><span>LEVEL <strong id="levelValue">1</strong></span><span><b id="xpValue">0</b>/100 XP</span></div><div class="xp-track"><i id="xpBar"></i></div><div class="hero" id="yokaiHero"></div><div class="mood-card"><span>MOOD</span><strong id="moodName">HAPPY</strong><p id="moodCopy">Du bist regelmäßig da. Dein Gho freut sich.</p></div><div class="quick-stats"><div><strong id="coinValue">0</strong><span>MYGHO-COINS</span></div><div><strong id="messageCount">0</strong><span>NACHRICHTEN</span></div><div><strong id="streakValue">0</strong><span>TAGE STREAK</span></div></div></div>
+<main class="collection"><div class="collection-head"><div><small>DEINE SAMMLUNG</small><h2>Skins</h2><p>Chatte, sammle XP und schalte neue Formen für dein Gho frei.</p></div><button class="shop-button" id="shopButton">✦ Skin-Shop</button></div><div class="skin-grid" id="skinGrid"></div>
 <section class="mood-rules"><div class="rules-head"><small>KAGE REAGIERT AUF DEINEN RHYTHMUS</small><h2>Drei Stimmungen. Keine Inhaltsanalyse.</h2></div><div class="rule-grid"><article class="active"><span>☻</span><div><strong>HAPPY</strong><p>1–39 Nachrichten heute</p></div></article><article><span>☾</span><div><strong>SLEEPY</strong><p>Ab 40 Nachrichten heute</p></div></article><article><span>☂</span><div><strong>SAD</strong><p>Seit zwei Tagen nicht aktiv</p></div></article></div></section></main>
 </section></div>
-<dialog id="shopDialog"><button class="dialog-close" id="closeShop">×</button><small>YŌKAI // SHOP</small><h2>Neue Formen kommen.</h2><p>Nach Sakura, Neon, Kitsune und Gold kannst du hier später weitere Skins mit Yōkai Coins kaufen.</p><div class="coin-preview"><span>DEIN GUTHABEN</span><strong><b id="dialogCoins">0</b> YC</strong></div></dialog><div class="toast" id="toast" role="status"></div>
+<dialog class="shop-dialog" id="shopDialog"><button class="dialog-close" id="closeShop">×</button><small>MYGHO // SKIN-SHOP</small><div class="shop-title"><div><h2>Mach dein Gho zu deinem.</h2><p>Neue Skins kannst du dauerhaft mit MyGho-Coins freischalten.</p></div><div class="coin-preview"><span>GUTHABEN</span><strong><b id="dialogCoins">0</b> MC</strong></div></div><div class="shop-catalog" id="shopCatalog"></div><form class="code-form" id="codeForm"><div><strong>HAST DU EINEN CODE?</strong><small>Jeder Code ist nur einmal einlösbar.</small></div><input id="codeInput" autocomplete="off" placeholder="Code eingeben"><button>Einlösen</button></form></dialog><div class="toast" id="toast" role="status"></div>
 <script src="/socket.io/socket.io.js"></script><script src="/js/yokai.js"></script><script src="/js/app.js"></script></body></html>
