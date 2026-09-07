@@ -36,12 +36,14 @@ io.on('connection', (socket) => {
       socket.emit('message:error', { clientId, reason: 'offline' });
       return;
     }
+
     const payload = {
       clientId,
       from,
       text: String(text).slice(0, 2000),
       sentAt: Date.now()
     };
+
     io.to(targetSocket).emit('message:incoming', payload);
     socket.emit('message:sent', payload);
   });
@@ -64,5 +66,5 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`Ghost demo running on http://0.0.0.0:${PORT}`);
+  console.log(`Y-Chat demo running on http://0.0.0.0:${PORT}`);
 });

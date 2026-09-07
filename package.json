@@ -1,6 +1,6 @@
 {
-  "name": "ghost-demo",
-  "version": "0.1.0",
+  "name": "y-chat-yokai-skins",
+  "version": "0.4.0",
   "private": true,
   "scripts": {
     "start": "node server.js"
