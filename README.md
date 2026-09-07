@@ -1,6 +1,8 @@
-# Y-Chat v0.3.2
+# Y-Chat v0.3.3
 
-Fix: Der im Skin-Shop ausgewählte Skin wird jetzt exakt als echtes Skin-Artwork im Yōkai-Screen angezeigt.
-Mood und Evolution verändern Animation, Größe und Glow.
-
-Deployment wie zuvor via Render/GitHub.
+Skin renderer fix:
+- The old CSS Yōkai has been removed from the main scene entirely.
+- The selected shop skin is now the only creature rendered in the Yōkai window.
+- Standard / Sakura / Neon / Kitsune / Gold swap the actual main creature asset.
+- Safari cache-busting added so a newly selected skin refreshes immediately.
+- Existing float/bounce/mood animation is applied to the selected skin image.
