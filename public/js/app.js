@@ -34,6 +34,7 @@
   const savedIdentity = JSON.parse(localStorage.getItem('mygho_identity_v1') || 'null');
   let account = null, peer = '', peerOnline = false, contacts = [], presence = new Map();
   const timers = new Map();
+  const conversations = new Map();
 
   const dayKey = (date = new Date()) => {
     const year = date.getFullYear(), month = String(date.getMonth() + 1).padStart(2, '0'), day = String(date.getDate()).padStart(2, '0');
@@ -60,6 +61,11 @@
     sad:'Es war lange still. Dein Gho hat dich vermisst.'
   };
   function toast(text) { const el = $('toast'); el.textContent = text; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), 1800); }
+  function requireConnection() {
+    if (socket.connected) return true;
+    toast('Server nicht erreichbar. Bitte kurz neu laden.');
+    return false;
+  }
 
   function route(name) {
     document.querySelectorAll('.screen').forEach(el => el.classList.toggle('active', el.id === `screen-${name}`));
@@ -183,7 +189,7 @@
     $('conversationState').textContent = state.online ? 'Online · Nachrichten live' : 'Offline · Name verborgen';
     $('headDot').classList.toggle('on', state.online);
     const enabled = Boolean(account && peer && state.online); $('messageInput').disabled = !enabled; $('sendButton').disabled = !enabled; $('emojiTrigger').disabled = !enabled;
-    $('emptyChat').classList.toggle('hidden', Boolean(peer)); renderContacts();
+    renderConversation(); renderContacts();
   }
   function checkAllPresence() {
     contacts.forEach(contact => socket.emit('presence:check', {id:contact.id}, result => { presence.set(contact.id,{online:result.online,name:result.name}); renderContacts(); if (peer === contact.id) selectContact(contact.id); }));
@@ -191,16 +197,24 @@
   function activateIdentity(result) {
     account = result.account; localStorage.setItem('mygho_identity_v1', JSON.stringify({name:account.name,token:result.token,id:account.id}));
     $('identityLabel').textContent = account.name; $('ownId').textContent = formatId(account.id); $('ownId').hidden = false; $('shareId').hidden = false; $('identityOrb').classList.add('on');
-    $('identityForm').hidden = true; loadContacts(); renderContacts(); checkAllPresence();
+    $('identityForm').hidden = true; $('loginForm').hidden = true; $('loginToggle').hidden = true; loadContacts(); renderContacts(); checkAllPresence();
   }
   $('identityForm').addEventListener('submit', e => {
-    e.preventDefault(); const name = $('myId').value.trim(); if (!name) return;
-    socket.emit('account:register', {name}, result => {
-      if (!result?.ok) return toast(result?.reason === 'name_taken' ? 'Dieser Name ist bereits vergeben' : 'Bitte 2–24 gültige Zeichen verwenden'); activateIdentity(result);
+    e.preventDefault(); const name = $('myId').value.trim(), password = $('registerPassword').value; if (!name || !password || !requireConnection()) return;
+    socket.emit('account:register', {name,password}, result => {
+      if (!result?.ok) return toast(result?.reason === 'name_taken' ? 'Dieser Name ist bereits vergeben' : result?.reason === 'invalid_password' ? 'Passwort braucht mindestens 8 Zeichen' : 'Bitte 2–24 gültige Zeichen verwenden'); activateIdentity(result);
     });
   });
+  $('loginForm').addEventListener('submit', e => {
+    e.preventDefault(); const login = $('loginId').value.trim(), password = $('loginPassword').value; if (!login || !password || !requireConnection()) return;
+    socket.emit('account:login', {login,password}, result => {
+      if (!result?.ok) return toast(result?.reason === 'too_many_attempts' ? 'Zu viele Versuche. Bitte Seite neu öffnen.' : 'Name, ID oder Passwort stimmt nicht'); activateIdentity(result);
+    });
+  });
+  $('loginToggle').addEventListener('click', () => { $('identityForm').hidden = true; $('loginToggle').hidden = true; $('loginForm').hidden = false; $('loginId').focus(); });
+  $('registerToggle').addEventListener('click', () => { $('loginForm').hidden = true; $('identityForm').hidden = false; $('loginToggle').hidden = false; $('myId').focus(); });
   $('peerForm').addEventListener('submit', e => {
-    e.preventDefault(); const query = $('peerId').value.trim(); if (!query || !account) return toast('Registriere dich zuerst');
+    e.preventDefault(); const query = $('peerId').value.trim(); if (!query || !account) return toast('Registriere dich zuerst'); if (!requireConnection()) return;
     socket.emit('contact:lookup', {query}, result => {
       if (!result?.ok) return toast('Kein passender Name oder keine ID gefunden');
       addContact(result.contact, result.online); $('peerId').value = ''; selectContact(result.contact.id); toast(`${result.contact.name} hinzugefügt`);
@@ -214,8 +228,13 @@
   });
   if (savedIdentity?.token) socket.emit('account:register', {token:savedIdentity.token}, result => { if (result?.ok) activateIdentity(result); else localStorage.removeItem('mygho_identity_v1'); });
 
-  function addMessage(data, mine) {
-    $('emptyChat').classList.add('hidden');
+  function conversationFor(id) { if (!conversations.has(id)) conversations.set(id, new Map()); return conversations.get(id); }
+  function findRecord(clientId) {
+    for (const [contactId, records] of conversations) if (records.has(clientId)) return {contactId, record:records.get(clientId), records};
+    return null;
+  }
+  function renderMessage(record) {
+    const {data,mine,readAt} = record;
     const item = document.createElement('div'); item.className = `message ${mine ? 'mine' : ''}`; item.dataset.id = data.clientId;
     const bubble = document.createElement('div'); bubble.className = 'bubble';
     const stickerMatch = /^\[\[yokai:([a-z]+)\]\]$/.exec(data.text);
@@ -224,15 +243,30 @@
       bubble.classList.add('sticker-bubble');
       const sticker = document.createElement('span'); sticker.className = 'yokai-sticker'; sticker.setAttribute('role','img'); sticker.setAttribute('aria-label', reaction.label); sticker.style.setProperty('--sprite-x', `${reaction.col / 2 * 100}%`); sticker.style.setProperty('--sprite-y', `${reaction.row / 2 * 100}%`); bubble.appendChild(sticker);
     } else bubble.textContent = data.text;
-    const meta = document.createElement('div'); meta.className = 'message-meta'; meta.innerHTML = `<span>${mine ? 'GESENDET' : 'GELESEN'}</span> · <span class="timer">${mine ? 'WARTET' : '60s'}</span>`;
-    item.append(bubble, meta); $('messages').appendChild(item); $('messages').scrollTop = $('messages').scrollHeight;
-    if (!mine) { const readAt = Date.now(); socket.emit('message:read', {to:data.from, clientId:data.clientId, readAt}); startTimer(data.clientId, readAt); }
+    const left = readAt ? Math.max(0, 60 - Math.floor((Date.now() - readAt) / 1000)) : null;
+    const meta = document.createElement('div'); meta.className = 'message-meta'; meta.innerHTML = `<span>${mine ? 'GESENDET' : 'GELESEN'}</span> · <span class="timer">${left === null ? 'WARTET' : `${left}s`}</span>`;
+    item.append(bubble, meta); return item;
+  }
+  function renderConversation() {
+    const host = $('messages'); host.innerHTML = '';
+    const records = peer ? conversationFor(peer) : new Map();
+    $('emptyChat').classList.toggle('hidden', records.size > 0);
+    records.forEach(record => host.appendChild(renderMessage(record))); host.scrollTop = host.scrollHeight;
   }
   function startTimer(clientId, readAt) {
-    const item = document.querySelector(`[data-id="${CSS.escape(clientId)}"]`); if (!item) return;
-    const label = item.querySelector('.timer'); clearInterval(timers.get(clientId));
-    const tick = () => { const left = Math.max(0, 60 - Math.floor((Date.now() - readAt) / 1000)); label.textContent = `${left}s`; if (!left) { clearInterval(timers.get(clientId)); timers.delete(clientId); item.classList.add('gone'); setTimeout(() => item.remove(), 350); } };
+    const found = findRecord(clientId); if (!found) return; found.record.readAt = readAt; clearInterval(timers.get(clientId));
+    const tick = () => {
+      const left = Math.max(0, 60 - Math.floor((Date.now() - readAt) / 1000));
+      const visible = document.querySelector(`[data-id="${CSS.escape(clientId)}"] .timer`); if (visible) visible.textContent = `${left}s`;
+      if (!left) { clearInterval(timers.get(clientId)); timers.delete(clientId); const item = document.querySelector(`[data-id="${CSS.escape(clientId)}"]`); item?.classList.add('gone'); setTimeout(() => { found.records.delete(clientId); if (peer === found.contactId) renderConversation(); }, 350); }
+    };
     tick(); timers.set(clientId, setInterval(tick, 250));
+  }
+  function addMessage(data, mine) {
+    const contactId = mine ? data.to : data.from; if (!contactId) return;
+    const record = {data,mine,readAt:mine ? null : Date.now()}; conversationFor(contactId).set(data.clientId,record);
+    if (!mine) { socket.emit('message:read',{to:data.from,clientId:data.clientId,readAt:record.readAt}); startTimer(data.clientId,record.readAt); }
+    if (peer === contactId) renderConversation();
   }
   $('messageForm').addEventListener('submit', e => {
     e.preventDefault(); let text = $('messageInput').value.trim(); if (!text || !account || !peerOnline) return;
@@ -245,10 +279,14 @@
   socket.on('message:sent', data => { addMessage(data, true); recordSentMessage(); });
   socket.on('message:incoming', data => {
     if (!contacts.some(contact => contact.id === data.from)) addContact({id:data.from,name:data.fromName,suffix:data.from.slice(-4)}, true);
-    presence.set(data.from,{online:true,name:data.fromName}); if (!peer) selectContact(data.from); if (data.from === peer) addMessage(data, false);
+    presence.set(data.from,{online:true,name:data.fromName});
+    addMessage(data, false);
+    if (!peer) selectContact(data.from);
   });
   socket.on('message:read', ({clientId, readAt}) => startTimer(clientId, readAt));
   socket.on('message:error', () => { if (peer) { presence.set(peer,{online:false,name:null}); selectContact(peer); } toast('Kontakt ist offline. Nichts wurde gespeichert.'); });
+  socket.on('disconnect', () => { $('identityOrb').classList.remove('on'); });
+  socket.on('connect_error', () => toast('Server nicht erreichbar. Bitte kurz neu laden.'));
 
   reactions.forEach(item => {
     const button = document.createElement('button'); button.type = 'button'; button.className = 'emoji-option'; button.title = `${item.label} · ${item.shortcut}`;

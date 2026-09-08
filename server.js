@@ -31,6 +31,16 @@ function newId() {
   return id;
 }
 function validName(name) { return /^[\p{L}\p{N}_. -]{2,24}$/u.test(name); }
+function validPassword(password) { return typeof password === 'string' && password.length >= 8 && password.length <= 72; }
+function hashPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
+  return { salt, hash: crypto.scryptSync(password, salt, 64).toString('hex') };
+}
+function passwordMatches(account, password) {
+  if (!account.passwordHash || !account.passwordSalt || !validPassword(password)) return false;
+  const actual = Buffer.from(account.passwordHash, 'hex');
+  const supplied = crypto.scryptSync(password, account.passwordSalt, 64);
+  return actual.length === supplied.length && crypto.timingSafeEqual(actual, supplied);
+}
 function resolveAccount(query) {
   const clean = String(query || '').replace(/[\s-]/g, '');
   if (/^\d{12}$/.test(clean)) return accounts.find(account => account.id === clean);
@@ -48,17 +58,28 @@ function setOnline(socket, account) {
 app.use(express.static(path.join(__dirname, 'public')));
 
 io.on('connection', socket => {
-  socket.on('account:register', ({ name, token } = {}, cb) => {
+  socket.data.loginAttempts = 0;
+  socket.on('account:register', ({ name, password, token } = {}, cb) => {
     const active = accounts.find(account => account.id === socket.data.accountId);
     if (active) return cb?.({ ok: true, account: publicAccount(active), token: active.token, restored: true });
     const restored = token && accounts.find(account => account.token === token);
     if (restored) { setOnline(socket, restored); return cb?.({ ok: true, account: publicAccount(restored), token: restored.token, restored: true }); }
     const cleanName = String(name || '').trim().replace(/\s+/g, ' ');
     if (!validName(cleanName)) return cb?.({ ok: false, reason: 'invalid_name' });
+    if (!validPassword(password)) return cb?.({ ok: false, reason: 'invalid_password' });
     if (accounts.some(account => account.normalizedName === normalizeName(cleanName))) return cb?.({ ok: false, reason: 'name_taken' });
-    const account = { id: newId(), name: cleanName, normalizedName: normalizeName(cleanName), token: crypto.randomBytes(24).toString('hex'), createdAt: Date.now() };
+    const passwordData = hashPassword(password);
+    const account = { id: newId(), name: cleanName, normalizedName: normalizeName(cleanName), passwordHash: passwordData.hash, passwordSalt: passwordData.salt, token: crypto.randomBytes(24).toString('hex'), email:null, emailVerified:false, createdAt: Date.now() };
     accounts.push(account); saveAccounts(); setOnline(socket, account);
     cb?.({ ok: true, account: publicAccount(account), token: account.token, restored: false });
+  });
+
+  socket.on('account:login', ({ login, password } = {}, cb) => {
+    if (socket.data.loginAttempts >= 8) return cb?.({ ok:false, reason:'too_many_attempts' });
+    const account = resolveAccount(login);
+    if (!account || !passwordMatches(account, password)) { socket.data.loginAttempts += 1; return cb?.({ ok:false, reason:'invalid_credentials' }); }
+    socket.data.loginAttempts = 0; account.token = crypto.randomBytes(24).toString('hex'); saveAccounts(); setOnline(socket, account);
+    cb?.({ ok:true, account:publicAccount(account), token:account.token, restored:false });
   });
 
   socket.on('contact:lookup', ({ query } = {}, cb) => {
@@ -77,7 +98,7 @@ io.on('connection', socket => {
     const from = accounts.find(account => account.id === socket.data.accountId);
     const targetSocket = online.get(String(to || ''));
     if (!from || !targetSocket || !text) return socket.emit('message:error', { clientId, reason: 'offline' });
-    const payload = { clientId, from: from.id, fromName: from.name, text: String(text).slice(0, 2000), sentAt: Date.now() };
+    const payload = { clientId, from: from.id, to: String(to), fromName: from.name, text: String(text).slice(0, 2000), sentAt: Date.now() };
     io.to(targetSocket).emit('message:incoming', payload);
     socket.emit('message:sent', payload);
   });
