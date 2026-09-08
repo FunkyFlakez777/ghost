@@ -31,7 +31,6 @@
   try { progress = {...defaults, ...JSON.parse(localStorage.getItem(STORE) || '{}')}; }
   catch { progress = {...defaults}; }
   progress.rituals = {...defaults.rituals, ...(progress.rituals || {})};
-  const savedIdentity = JSON.parse(localStorage.getItem('mygho_identity_v1') || 'null');
   let account = null, peer = '', peerOnline = false, contacts = [], presence = new Map();
   const timers = new Map();
   const conversations = new Map();
@@ -226,7 +225,26 @@
     if (!contacts.some(contact => contact.id === id)) return;
     presence.set(id,{online,name}); renderContacts(); if (peer === id) selectContact(id);
   });
-  if (savedIdentity?.token) socket.emit('account:register', {token:savedIdentity.token}, result => { if (result?.ok) activateIdentity(result); else localStorage.removeItem('mygho_identity_v1'); });
+  let restoringIdentity = false, lastPresenceSignal = 0;
+  function restoreIdentity() {
+    const identity = JSON.parse(localStorage.getItem('mygho_identity_v1') || 'null');
+    if (!identity?.token || !socket.connected || restoringIdentity) return;
+    restoringIdentity = true;
+    socket.emit('account:register', {token:identity.token}, result => {
+      restoringIdentity = false;
+      if (result?.ok) activateIdentity(result); else { account = null; localStorage.removeItem('mygho_identity_v1'); }
+    });
+  }
+  function signalActivity() {
+    if (!socket.connected) { socket.connect(); return; }
+    if (!account || Date.now() - lastPresenceSignal < 10000) return;
+    lastPresenceSignal = Date.now(); socket.emit('presence:active');
+  }
+  socket.on('connect', () => { restoreIdentity(); signalActivity(); });
+  ['pointerdown','pointermove','keydown','touchstart'].forEach(type => document.addEventListener(type, signalActivity, {passive:true}));
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) signalActivity(); });
+  setInterval(() => { if (!document.hidden) signalActivity(); }, 20000);
+  if (socket.connected) restoreIdentity();
 
   function conversationFor(id) { if (!conversations.has(id)) conversations.set(id, new Map()); return conversations.get(id); }
   function findRecord(clientId) {
@@ -250,7 +268,6 @@
   function renderConversation() {
     const host = $('messages'); host.innerHTML = '';
     const records = peer ? conversationFor(peer) : new Map();
-    $('emptyChat').classList.toggle('hidden', records.size > 0);
     records.forEach(record => host.appendChild(renderMessage(record))); host.scrollTop = host.scrollHeight;
   }
   function startTimer(clientId, readAt) {

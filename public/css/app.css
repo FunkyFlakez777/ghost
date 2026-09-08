@@ -34,3 +34,7 @@ img.shop-sprite,img.premium-character{background:none;width:100%;height:100%;obj
 @keyframes contact-fade-in{from{opacity:.18;filter:blur(4px) saturate(.2)}to{opacity:1;filter:blur(0) saturate(1)}}
 
 [hidden]{display:none!important}.auth-form{display:grid;grid-template-columns:1fr;gap:8px}.auth-form button{min-height:42px}.login-toggle{align-self:flex-start;border:0;background:none;padding:0;color:#71889d;font-size:11px;cursor:pointer}.login-toggle strong{color:#83d8ff}.auth-back{border:0!important;background:transparent!important;color:#6f879b;font-size:10px}.profile-link{width:auto!important;min-width:70px;padding:0 14px!important;color:#a7dfff;font:11px Space Mono!important;letter-spacing:.06em}.mood-card{display:grid;gap:6px}.mood-card>strong{margin:0;font:700 17px Space Mono;letter-spacing:.12em}
+
+/* Stable viewport chat: only the message rail scrolls */
+.conversation{grid-template-rows:auto minmax(0,1fr) auto auto;height:calc(100dvh - 121px);min-height:560px;overflow:hidden}.messages{min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;justify-content:flex-start}.messages>.message:first-child{margin-top:auto}
+@media(max-width:720px){.conversation{height:calc(100dvh - 65px);min-height:520px}.messages{min-height:0}}

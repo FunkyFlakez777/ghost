@@ -17,6 +17,8 @@ try { accounts = JSON.parse(fs.readFileSync(accountFile, 'utf8')); }
 catch { accounts = []; }
 
 const online = new Map(); // account id -> socket id
+const offlineTimers = new Map();
+const OFFLINE_GRACE_MS = Number(process.env.MYGHO_OFFLINE_GRACE_MS) || 45000;
 const normalizeName = value => String(value || '').trim().normalize('NFKC').toLocaleLowerCase('de-DE');
 const publicAccount = account => ({ id: account.id, name: account.name, suffix: account.id.slice(-4) });
 function saveAccounts() {
@@ -49,10 +51,13 @@ function resolveAccount(query) {
 }
 function setOnline(socket, account) {
   socket.data.accountId = account.id;
+  clearTimeout(offlineTimers.get(account.id));
+  offlineTimers.delete(account.id);
   const previous = online.get(account.id);
-  if (previous && previous !== socket.id) io.sockets.sockets.get(previous)?.disconnect(true);
+  const alreadyOnlineHere = previous === socket.id;
   online.set(account.id, socket.id);
-  io.emit('presence:update', { id: account.id, online: true, name: account.name });
+  if (previous && previous !== socket.id) io.sockets.sockets.get(previous)?.disconnect(true);
+  if (!alreadyOnlineHere) io.emit('presence:update', { id: account.id, online: true, name: account.name });
 }
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -86,12 +91,18 @@ io.on('connection', socket => {
     if (!socket.data.accountId) return cb?.({ ok: false, reason: 'not_registered' });
     const account = resolveAccount(query);
     if (!account || account.id === socket.data.accountId) return cb?.({ ok: false, reason: 'not_found' });
-    cb?.({ ok: true, contact: publicAccount(account), online: online.has(account.id) });
+    cb?.({ ok: true, contact: publicAccount(account), online: online.has(account.id) || offlineTimers.has(account.id) });
   });
 
   socket.on('presence:check', ({ id } = {}, cb) => {
     const account = accounts.find(item => item.id === String(id || ''));
-    cb?.({ online: Boolean(account && online.has(account.id)), name: account && online.has(account.id) ? account.name : null });
+    const visible = Boolean(account && (online.has(account.id) || offlineTimers.has(account.id)));
+    cb?.({ online: visible, name: visible ? account.name : null });
+  });
+
+  socket.on('presence:active', () => {
+    const account = accounts.find(item => item.id === socket.data.accountId);
+    if (account) setOnline(socket, account);
   });
 
   socket.on('message:send', ({ to, text, clientId } = {}) => {
@@ -110,7 +121,14 @@ io.on('connection', socket => {
 
   socket.on('disconnect', () => {
     const id = socket.data.accountId;
-    if (id && online.get(id) === socket.id) { online.delete(id); io.emit('presence:update', { id, online: false, name: null }); }
+    if (!id || online.get(id) !== socket.id) return;
+    online.delete(id);
+    clearTimeout(offlineTimers.get(id));
+    offlineTimers.set(id, setTimeout(() => {
+      if (online.has(id)) return;
+      offlineTimers.delete(id);
+      io.emit('presence:update', { id, online: false, name: null });
+    }, OFFLINE_GRACE_MS));
   });
 });
 
